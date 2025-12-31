@@ -26,7 +26,6 @@ let selectedLogId: string | null = null;
 
 const logsList = qs<HTMLDivElement>("logsList");
 const details = qs<HTMLDivElement>("details");
-const statusEl = qs<HTMLDivElement>("status");
 
 // Column widths (persisted) - Time, Method, Host, Path, Status, ms
 const DEFAULT_COL_WIDTHS = [50, 45, 90, -1, 45, 40]; // -1 = flex
@@ -43,12 +42,107 @@ let filterSearch = "";
 let filterMethod = "";
 let filterStatus = "";
 
-// Detail pane height (persisted)
-let detailHeight = 60; // percentage
+// Theme state
+let darkMode = false;
 
-function setStatus(text: string, isError = false) {
-  statusEl.textContent = text;
-  statusEl.classList.toggle("error", isError);
+// UI Preferences key for persistence
+const UI_PREFS_KEY = "franzai_ui_prefs";
+
+/** Simple debounce utility */
+function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
+  let timeout: ReturnType<typeof setTimeout>;
+  return ((...args: unknown[]) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => fn(...args), ms);
+  }) as T;
+}
+
+/** Error boundary wrapper for async functions */
+function withErrorHandling<T extends (...args: unknown[]) => Promise<unknown>>(
+  fn: T,
+  context: string
+): T {
+  return (async (...args: unknown[]) => {
+    try {
+      return await fn(...args);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      log.error(`Error in ${context}:`, e);
+      showToast(`Error: ${msg}`, true);
+      return null;
+    }
+  }) as T;
+}
+
+/** Load UI preferences from storage */
+async function loadUIPrefs() {
+  try {
+    const data = await chrome.storage.local.get(UI_PREFS_KEY);
+    const prefs = data[UI_PREFS_KEY];
+    if (prefs) {
+      if (prefs.colWidths) colWidths = prefs.colWidths;
+      if (prefs.sortColumn) sortColumn = prefs.sortColumn;
+      if (prefs.sortDir) sortDir = prefs.sortDir;
+      if (prefs.darkMode !== undefined) {
+        darkMode = prefs.darkMode;
+        applyTheme();
+      }
+    }
+  } catch (e) {
+    log.error("Failed to load UI preferences", e);
+  }
+}
+
+/** Save UI preferences to storage */
+const saveUIPrefs = debounce(async () => {
+  try {
+    await chrome.storage.local.set({
+      [UI_PREFS_KEY]: { colWidths, sortColumn, sortDir, darkMode }
+    });
+  } catch (e) {
+    log.error("Failed to save UI preferences", e);
+  }
+}, 500);
+
+/** Apply current theme */
+function applyTheme() {
+  document.body.classList.toggle("dark-theme", darkMode);
+  const themeBtn = document.getElementById("btnTheme");
+  if (themeBtn) {
+    themeBtn.title = darkMode ? "Switch to light mode" : "Switch to dark mode";
+    themeBtn.innerHTML = darkMode
+      ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
+      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  }
+}
+
+/** Toggle dark mode */
+function toggleTheme() {
+  darkMode = !darkMode;
+  applyTheme();
+  saveUIPrefs();
+}
+
+/** Check if any filter is active */
+function hasActiveFilters(): boolean {
+  return filterSearch !== "" || filterMethod !== "" || filterStatus !== "";
+}
+
+/** Clear all filters */
+function clearFilters() {
+  filterSearch = "";
+  filterMethod = "";
+  filterStatus = "";
+
+  const searchInput = document.getElementById("filterSearch") as HTMLInputElement;
+  const methodSelect = document.getElementById("filterMethod") as HTMLSelectElement;
+  const statusSelect = document.getElementById("filterStatus") as HTMLSelectElement;
+
+  if (searchInput) searchInput.value = "";
+  if (methodSelect) methodSelect.value = "";
+  if (statusSelect) statusSelect.value = "";
+
+  renderLogs();
 }
 
 function fmtTs(ts: number) {
@@ -240,9 +334,9 @@ function updateSortIndicators() {
 }
 
 function renderLogs() {
-  while (logsList.firstChild) {
-    logsList.removeChild(logsList.firstChild);
-  }
+  // Use DocumentFragment for batch DOM updates (better performance)
+  const fragment = document.createDocumentFragment();
+  logsList.innerHTML = "";
   const detailPane = document.getElementById("detailPane");
 
   if (!logs.length) {
@@ -251,6 +345,7 @@ function renderLogs() {
     hint.textContent = "No requests captured yet. Make fetch calls to see them here.";
     logsList.appendChild(hint);
     if (detailPane) detailPane.classList.remove("visible");
+    updateFilterUI(0, 0);
     return;
   }
 
@@ -258,12 +353,19 @@ function renderLogs() {
   const filteredLogs = filterLogs(logs);
   const sortedLogs = sortLogs(filteredLogs);
 
-  // Update request count
-  const countEl = document.getElementById("requestCount");
-  if (countEl) {
-    const filtered = filteredLogs.length;
-    const total = logs.length;
-    countEl.textContent = filtered === total ? String(total) : `${filtered}/${total}`;
+  // Update filter UI (count + clear button visibility)
+  updateFilterUI(filteredLogs.length, logs.length);
+
+  // Show empty state if all filtered out
+  if (!filteredLogs.length) {
+    const hint = document.createElement("div");
+    hint.className = "hint";
+    hint.innerHTML = `No requests match your filters. <a href="#" id="clearFiltersLink">Clear filters</a>`;
+    logsList.appendChild(hint);
+    const clearLink = document.getElementById("clearFiltersLink");
+    if (clearLink) clearLink.onclick = (e) => { e.preventDefault(); clearFilters(); };
+    if (detailPane) detailPane.classList.remove("visible");
+    return;
   }
 
   for (const l of sortedLogs) {
@@ -283,8 +385,11 @@ function renderLogs() {
       if (detailPane) detailPane.classList.add("visible");
     };
 
-    logsList.appendChild(div);
+    fragment.appendChild(div);
   }
+
+  // Single DOM update for all items
+  logsList.appendChild(fragment);
 
   // Auto-scroll to bottom when sorted by time desc (newest at bottom)
   if (sortColumn === "ts" && sortDir === "desc") {
@@ -297,6 +402,22 @@ function renderLogs() {
   // Show detail pane if something is selected
   if (selectedLogId && detailPane) {
     detailPane.classList.add("visible");
+  }
+}
+
+/** Update filter-related UI elements */
+function updateFilterUI(filtered: number, total: number) {
+  // Update request count badge
+  const countEl = document.getElementById("requestCount");
+  if (countEl) {
+    countEl.textContent = filtered === total ? String(total) : `${filtered}/${total}`;
+    countEl.classList.toggle("filtered", filtered !== total);
+  }
+
+  // Show/hide clear filters button
+  const clearBtn = document.getElementById("btnClearFilters");
+  if (clearBtn) {
+    clearBtn.style.display = hasActiveFilters() ? "inline-flex" : "none";
   }
 }
 
@@ -783,7 +904,7 @@ function renderSettings() {
 }
 
 async function loadAll() {
-  setStatus("Loading...");
+  log.info("Loading...");
 
   try {
     const s = await sendRuntimeMessage<{ type: typeof BG_MSG.GET_SETTINGS }, BgResp<never>>({
@@ -796,10 +917,10 @@ async function loadAll() {
     });
     if (l.ok && l.logs) logs = l.logs;
 
-    setStatus(`Loaded ${logs.length} logs at ${new Date().toLocaleTimeString()}`);
+    log.info(`Loaded ${logs.length} logs`);
   } catch (e) {
     log.error("Failed to load state from background", e);
-    setStatus("Failed to load - check extension console", true);
+    showToast("Failed to load - check extension console", true);
   }
 
   renderLogs();
@@ -828,11 +949,10 @@ async function saveSettings(next: BridgeSettings) {
 
     settings = next;
     renderSettings();
-    setStatus("Settings saved");
+    showToast("Settings saved");
   } catch (e) {
     log.error("Failed to save settings", e);
     showToast("Failed to save settings", true);
-    setStatus("Failed to save settings", true);
   }
 }
 
@@ -853,7 +973,6 @@ qs<HTMLButtonElement>("btnClearLogs").onclick = async () => {
   } catch (e) {
     log.error("Failed to clear logs", e);
     showToast("Failed to clear logs", true);
-    setStatus("Failed to clear logs", true);
   }
 };
 
@@ -863,13 +982,11 @@ qs<HTMLButtonElement>("btnResetSettings").onclick = async () => {
   }
   try {
     await chrome.storage.local.clear();
-    setStatus("Settings reset to defaults");
     await loadAll();
     showToast("Settings reset to defaults");
   } catch (e) {
     log.error("Failed to reset settings", e);
     showToast("Failed to reset settings", true);
-    setStatus("Failed to reset settings", true);
   }
 };
 
@@ -1034,9 +1151,79 @@ port.onMessage.addListener(async (evt: BgEvent) => {
 
 /** Keyboard navigation */
 document.addEventListener("keydown", (e) => {
+  // Don't interfere with input fields
+  const target = e.target as HTMLElement;
+  if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT") {
+    // Escape blurs the input
+    if (e.key === "Escape") {
+      target.blur();
+    }
+    return;
+  }
+
   // Escape closes detail pane
   if (e.key === "Escape" && selectedLogId) {
     closeDetailPane();
+    return;
+  }
+
+  // j/k for navigation (like vim)
+  if (e.key === "j" || e.key === "k" || e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const filteredLogs = filterLogs(logs);
+    const sortedLogs = sortLogs(filteredLogs);
+    if (!sortedLogs.length) return;
+
+    const currentIndex = selectedLogId
+      ? sortedLogs.findIndex(l => l.id === selectedLogId)
+      : -1;
+
+    let newIndex: number;
+    if (e.key === "j" || e.key === "ArrowDown") {
+      newIndex = currentIndex < sortedLogs.length - 1 ? currentIndex + 1 : 0;
+    } else {
+      newIndex = currentIndex > 0 ? currentIndex - 1 : sortedLogs.length - 1;
+    }
+
+    const newLog = sortedLogs[newIndex];
+    selectedLogId = newLog.id;
+    renderDetails(newLog);
+
+    // Update visual selection
+    document.querySelectorAll(".item.active").forEach(el => el.classList.remove("active"));
+    const items = logsList.querySelectorAll(".item");
+    if (items[newIndex]) {
+      items[newIndex].classList.add("active");
+      items[newIndex].scrollIntoView({ block: "nearest" });
+    }
+
+    const detailPane = document.getElementById("detailPane");
+    if (detailPane) detailPane.classList.add("visible");
+    return;
+  }
+
+  // c to copy URL of selected request
+  if (e.key === "c" && selectedLogId) {
+    const log = logs.find(l => l.id === selectedLogId);
+    if (log) {
+      navigator.clipboard.writeText(log.url);
+      showToast("URL copied to clipboard");
+    }
+    return;
+  }
+
+  // / to focus search
+  if (e.key === "/") {
+    e.preventDefault();
+    const searchInput = document.getElementById("filterSearch") as HTMLInputElement;
+    if (searchInput) searchInput.focus();
+    return;
+  }
+
+  // r to refresh
+  if (e.key === "r" && !e.metaKey && !e.ctrlKey) {
+    loadAll();
+    return;
   }
 });
 
@@ -1056,6 +1243,7 @@ document.querySelectorAll<HTMLElement>(".table-header .sortable").forEach(el => 
     }
 
     renderLogs();
+    saveUIPrefs(); // Persist sort preference
   };
 });
 
@@ -1147,6 +1335,7 @@ function initResizableColumns() {
 function updateColumnWidth(index: number, width: number) {
   colWidths[index] = width;
   applyColumnWidths();
+  saveUIPrefs(); // Persist column widths
 }
 
 function applyColumnWidths() {
@@ -1170,10 +1359,12 @@ setTimeout(() => {
 const versionEl = document.getElementById("version");
 if (versionEl) versionEl.textContent = `v${BRIDGE_VERSION}`;
 
-/** Filter event handlers */
+/** Filter event handlers with debounce for text input */
+const debouncedRenderLogs = debounce(() => renderLogs(), 150);
+
 qs<HTMLInputElement>("filterSearch").oninput = (e) => {
   filterSearch = (e.target as HTMLInputElement).value;
-  renderLogs();
+  debouncedRenderLogs();
 };
 
 qs<HTMLSelectElement>("filterMethod").onchange = (e) => {
@@ -1185,6 +1376,18 @@ qs<HTMLSelectElement>("filterStatus").onchange = (e) => {
   filterStatus = (e.target as HTMLSelectElement).value;
   renderLogs();
 };
+
+/** Clear filters button */
+const clearFiltersBtn = document.getElementById("btnClearFilters");
+if (clearFiltersBtn) {
+  clearFiltersBtn.onclick = clearFilters;
+}
+
+/** Theme toggle button */
+const themeBtn = document.getElementById("btnTheme");
+if (themeBtn) {
+  themeBtn.onclick = toggleTheme;
+}
 
 /** Export logs as JSON */
 qs<HTMLButtonElement>("btnExportLogs").onclick = () => {
@@ -1228,4 +1431,10 @@ qs<HTMLButtonElement>("btnExportLogs").onclick = () => {
   showToast(`Exported ${logs.length} logs`);
 };
 
-loadAll();
+// Initialize with UI preferences first, then load data
+(async () => {
+  await loadUIPrefs();
+  applyTheme();
+  applyColumnWidths();
+  await loadAll();
+})();

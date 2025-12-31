@@ -13,7 +13,10 @@
         <span class="version" id="version">v2</span>
       </div>
       <div class="global-actions">
-        <button id="btnRefresh" class="icon-btn" title="Refresh">
+        <button id="btnTheme" class="icon-btn" title="Toggle dark mode (Ctrl+D)">
+          <svg id="themeIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
+        <button id="btnRefresh" class="icon-btn" title="Refresh (R)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         </button>
         <button id="btnSettings" class="settings-btn" title="Settings">
@@ -43,6 +46,9 @@
           <option value="redirect">3xx Redirect</option>
           <option value="error">4xx/5xx Error</option>
         </select>
+        <button id="btnClearFilters" class="clear-filters-btn hidden" title="Clear all filters (Esc)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
       <div class="toolbar-actions">
         <button id="btnExportLogs" title="Export logs as JSON">Export</button>
@@ -78,7 +84,7 @@
         </div>
         <div class="requests-layout">
           <div class="listPane">
-            <div id="logsList" class="list"></div>
+            <div id="logsList" class="list" role="listbox" aria-label="Request log entries" tabindex="0"></div>
           </div>
           <div class="detailPane" id="detailPane">
             <div id="details" class="details">
