@@ -28,6 +28,9 @@ function copyStatic() {
   fs.mkdirSync(outdir, { recursive: true });
   fs.copyFileSync("src/manifest.json", path.join(outdir, "manifest.json"));
   copyDir("src/sidepanel", path.join(outdir, "sidepanel"));
+  if (fs.existsSync("src/icons")) {
+    copyDir("src/icons", path.join(outdir, "icons"));
+  }
 }
 
 const common = {
