@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - FranzAI Bridge</title>
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel: #f1f3f4;
+      --text: #202124;
+      --muted: #5f6368;
+      --border: #dadce0;
+      --accent: #1a73e8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+    }
+    header a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 14px;
+    }
+    main {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 48px 24px;
+    }
+    h1 { font-size: 32px; margin-bottom: 8px; }
+    .updated { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+    h2 { font-size: 20px; margin-top: 32px; margin-bottom: 12px; }
+    p { margin-bottom: 16px; }
+    ul { margin-left: 24px; margin-bottom: 16px; }
+    li { margin-bottom: 8px; }
+    .highlight {
+      background: var(--panel);
+      border-left: 3px solid var(--accent);
+      padding: 16px;
+      margin: 24px 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/">Back to FranzAI Bridge</a>
+  </header>
+  <main>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: December 31, 2025</p>
+
+    <div class="highlight">
+      <strong>Summary:</strong> FranzAI Bridge stores your API keys locally in Chrome's extension storage. We do not collect, transmit, or store any of your data on external servers.
+    </div>
+
+    <h2>What Data We Collect</h2>
+    <p>FranzAI Bridge collects and stores the following data <strong>locally on your device only</strong>:</p>
+    <ul>
+      <li><strong>API Keys:</strong> The API keys you enter (OpenAI, Anthropic, Google, Mistral, or custom keys) are stored in Chrome's extension storage.</li>
+      <li><strong>Configuration:</strong> Your settings including allowed origins, allowed destinations, and custom injection rules.</li>
+      <li><strong>Request Logs:</strong> A temporary log of recent requests (up to 200 entries) is stored in memory for the request inspector. These logs are cleared when you close Chrome or click "Clear".</li>
+    </ul>
+
+    <h2>How We Use Your Data</h2>
+    <ul>
+      <li><strong>API Keys:</strong> Used solely to authenticate your requests to AI providers. Keys are injected into request headers by the extension and sent directly to the respective API endpoints.</li>
+      <li><strong>Configuration:</strong> Used to determine which pages can use the bridge and which APIs can be called.</li>
+      <li><strong>Request Logs:</strong> Displayed in the side panel for debugging purposes only.</li>
+    </ul>
+
+    <h2>Data Storage</h2>
+    <p>All data is stored locally using Chrome's <code>chrome.storage.local</code> API. This means:</p>
+    <ul>
+      <li>Data is stored on your device only</li>
+      <li>Data is not synced across devices (we do not use <code>chrome.storage.sync</code>)</li>
+      <li>Data persists until you uninstall the extension or clear extension data</li>
+    </ul>
+
+    <h2>Data Transmission</h2>
+    <p>FranzAI Bridge transmits data only in the following ways:</p>
+    <ul>
+      <li><strong>To AI API providers:</strong> When you make a request through the bridge, your request data (including the injected API key) is sent directly to the API endpoint you specified.</li>
+      <li><strong>No analytics:</strong> We do not send any usage data, telemetry, or analytics to any server.</li>
+      <li><strong>No third parties:</strong> We do not share your data with any third parties.</li>
+    </ul>
+
+    <h2>Security</h2>
+    <ul>
+      <li>API keys are stored in extension storage, which is not accessible to web pages or other extensions.</li>
+      <li>The extension uses allowlists to control which pages can make requests and which APIs can be called.</li>
+      <li>Requests are made directly from the extension to the API provider with no intermediary servers.</li>
+    </ul>
+
+    <h2>Your Rights</h2>
+    <p>You have full control over your data:</p>
+    <ul>
+      <li><strong>View:</strong> All stored data is visible in the extension's side panel.</li>
+      <li><strong>Delete:</strong> Use the "Reset All Settings" button to delete all stored data, or uninstall the extension.</li>
+      <li><strong>Export:</strong> Request logs can be exported as JSON from the side panel.</li>
+    </ul>
+
+    <h2>Changes to This Policy</h2>
+    <p>We may update this privacy policy from time to time. Any changes will be reflected in the "Last updated" date at the top of this page.</p>
+
+    <h2>Contact</h2>
+    <p>If you have questions about this privacy policy, please open an issue on our <a href="https://github.com/franzenzenhofer/franzai-bridge-v2">GitHub repository</a>.</p>
+  </main>
+</body>
+</html>

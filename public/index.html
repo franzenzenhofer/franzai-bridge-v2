@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FranzAI Bridge - CORS Bypass & API Key Injection for Browser AI Apps</title>
+  <meta name="description" content="Make API calls from any webpage. Your API keys stay secure in the Chrome extension. Built-in support for OpenAI, Anthropic, Google Gemini, and Mistral.">
+  <meta property="og:title" content="FranzAI Bridge">
+  <meta property="og:description" content="CORS bypass + API key injection for browser AI apps">
+  <meta property="og:image" content="https://bridge.franzai.com/og-image.png">
+  <meta property="og:url" content="https://bridge.franzai.com">
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    /* DevTools-inspired Light Mode Design */
+    :root {
+      --bg: #ffffff;
+      --panel: #f1f3f4;
+      --panel-lighter: #e8eaed;
+      --text: #202124;
+      --text-bright: #000000;
+      --muted: #5f6368;
+      --border: #dadce0;
+      --accent: #1a73e8;
+      --success: #188038;
+      --error: #d93025;
+      --warning: #e37400;
+      --font-mono: "Roboto Mono", "SF Mono", "Monaco", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* Header */
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    .logo-text {
+      font-weight: 600;
+      font-size: 18px;
+      color: var(--text-bright);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      transition: all 0.15s;
+    }
+
+    .btn:hover {
+      background: var(--panel-lighter);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover {
+      background: #1557b0;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 80px 24px;
+      background: linear-gradient(180deg, var(--panel) 0%, var(--bg) 100%);
+    }
+
+    .hero h1 {
+      font-size: 48px;
+      font-weight: 700;
+      color: var(--text-bright);
+      margin-bottom: 16px;
+    }
+
+    .hero .tagline {
+      font-size: 20px;
+      color: var(--muted);
+      margin-bottom: 32px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 32px;
+      font-size: 14px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+
+    .status-dot.checking { background: var(--warning); animation: pulse 1s infinite; }
+    .status-dot.installed { background: var(--success); }
+    .status-dot.not-installed { background: var(--error); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Section */
+    section {
+      padding: 64px 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    section h2 {
+      font-size: 32px;
+      font-weight: 600;
+      color: var(--text-bright);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    section .subtitle {
+      text-align: center;
+      color: var(--muted);
+      margin-bottom: 48px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Features Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+    }
+
+    .feature-card h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .feature-card p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* Providers */
+    .providers {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      flex-wrap: wrap;
+    }
+
+    .provider {
+      text-align: center;
+    }
+
+    .provider-icon {
+      width: 64px;
+      height: 64px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      font-size: 24px;
+    }
+
+    .provider-name {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    /* Code Block */
+    .code-block {
+      background: #1e1e1e;
+      border-radius: 8px;
+      padding: 20px;
+      overflow-x: auto;
+      margin: 24px 0;
+    }
+
+    .code-block pre {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.5;
+      color: #d4d4d4;
+    }
+
+    .code-block .comment { color: #6a9955; }
+    .code-block .keyword { color: #569cd6; }
+    .code-block .string { color: #ce9178; }
+    .code-block .function { color: #dcdcaa; }
+
+    /* Installation Steps */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 24px;
+      counter-reset: step;
+    }
+
+    .step {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      position: relative;
+    }
+
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      top: -12px;
+      left: 20px;
+      width: 24px;
+      height: 24px;
+      background: var(--accent);
+      color: white;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step h4 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .step p {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* Architecture Diagram */
+    .diagram {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 32px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      white-space: pre;
+      overflow-x: auto;
+      text-align: center;
+    }
+
+    /* FAQ */
+    .faq-list {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .faq-item {
+      border-bottom: 1px solid var(--border);
+      padding: 20px 0;
+    }
+
+    .faq-item h4 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .faq-item p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* Footer */
+    footer {
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+      padding: 32px 24px;
+      text-align: center;
+    }
+
+    footer .links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 16px;
+    }
+
+    footer a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    footer a:hover {
+      color: var(--accent);
+    }
+
+    footer .copyright {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 32px; }
+      .nav-links { display: none; }
+      .providers { gap: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="128" height="128" rx="24" fill="url(#bg)"/>
+        <path d="M20 85 Q64 35 108 85" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/>
+        <line x1="35" y1="85" x2="35" y2="100" stroke="white" stroke-width="6" stroke-linecap="round"/>
+        <line x1="64" y1="60" x2="64" y2="100" stroke="white" stroke-width="6" stroke-linecap="round"/>
+        <line x1="93" y1="85" x2="93" y2="100" stroke="white" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="40" cy="45" r="5" fill="rgba(255,255,255,0.7)"/>
+        <circle cx="64" cy="38" r="5" fill="rgba(255,255,255,0.7)"/>
+        <circle cx="88" cy="45" r="5" fill="rgba(255,255,255,0.7)"/>
+        <line x1="40" y1="45" x2="64" y2="38" stroke="rgba(255,255,255,0.5)" stroke-width="2"/>
+        <line x1="64" y1="38" x2="88" y2="45" stroke="rgba(255,255,255,0.5)" stroke-width="2"/>
+        <defs>
+          <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#1a73e8"/>
+            <stop offset="100%" style="stop-color:#0d47a1"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <span class="logo-text">FranzAI Bridge</span>
+    </div>
+    <nav class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#how-it-works">How It Works</a>
+      <a href="https://github.com/franzenzenhofer/franzai-bridge-v2" target="_blank">GitHub</a>
+      <a href="/demo/" class="btn">Try Demo</a>
+    </nav>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1>FranzAI Bridge</h1>
+    <p class="tagline">CORS bypass + API key injection for browser AI apps. Make API calls from any webpage. Your keys stay secure.</p>
+    <div class="hero-actions">
+      <a href="#install" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Install Extension
+      </a>
+      <a href="/demo/" class="btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Try Demo
+      </a>
+      <a href="https://github.com/franzenzenhofer/franzai-bridge-v2" class="btn" target="_blank">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        GitHub
+      </a>
+    </div>
+    <div class="status-bar" id="statusBar">
+      <span class="status-dot checking" id="statusDot"></span>
+      <span id="statusText">Checking for extension...</span>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features">
+    <h2>Features</h2>
+    <p class="subtitle">Everything you need to call AI APIs from static webpages</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          CORS Bypass
+        </h3>
+        <p>Make cross-origin requests from any webpage. The extension routes requests through its background script, which has no CORS restrictions.</p>
+      </div>
+      <div class="feature-card">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Secure API Keys
+        </h3>
+        <p>API keys are stored in extension storage, never exposed to page JavaScript. Keys are auto-injected per provider.</p>
+      </div>
+      <div class="feature-card">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Request Inspector
+        </h3>
+        <p>DevTools-style panel shows all requests/responses. See headers, bodies, timing, and errors in real-time.</p>
+      </div>
+      <div class="feature-card">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          Multi-Provider
+        </h3>
+        <p>Built-in support for OpenAI, Anthropic Claude, Google Gemini, and Mistral. Add custom rules for any API.</p>
+      </div>
+      <div class="feature-card">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Zero Config
+        </h3>
+        <p>Just add your API key and start making requests. Works with existing fetch() code - no changes needed.</p>
+      </div>
+      <div class="feature-card">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Allowlists
+        </h3>
+        <p>Control which pages can use the bridge and which APIs can be called. Prevent unauthorized access.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Providers -->
+  <section>
+    <h2>Supported AI Providers</h2>
+    <p class="subtitle">Built-in injection rules for major AI APIs</p>
+    <div class="providers">
+      <div class="provider">
+        <div class="provider-icon">O</div>
+        <div class="provider-name">OpenAI</div>
+      </div>
+      <div class="provider">
+        <div class="provider-icon">A</div>
+        <div class="provider-name">Anthropic</div>
+      </div>
+      <div class="provider">
+        <div class="provider-icon">G</div>
+        <div class="provider-name">Google Gemini</div>
+      </div>
+      <div class="provider">
+        <div class="provider-icon">M</div>
+        <div class="provider-name">Mistral</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Code Example -->
+  <section>
+    <h2>Quick Start</h2>
+    <p class="subtitle">Just use fetch() - the extension handles the rest</p>
+    <div class="code-block">
+<pre><span class="comment">// Call OpenAI from any webpage - no backend needed</span>
+<span class="keyword">const</span> <span class="function">response</span> = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">"https://api.openai.com/v1/chat/completions"</span>, {
+  method: <span class="string">"POST"</span>,
+  headers: { <span class="string">"Content-Type"</span>: <span class="string">"application/json"</span> },
+  body: JSON.stringify({
+    model: <span class="string">"gpt-4"</span>,
+    messages: [{ role: <span class="string">"user"</span>, content: <span class="string">"Hello!"</span> }]
+  })
+});
+
+<span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
+console.<span class="function">log</span>(data.choices[<span class="keyword">0</span>].message.content);
+<span class="comment">// API key auto-injected by FranzAI Bridge!</span></pre>
+    </div>
+  </section>
+
+  <!-- Installation -->
+  <section id="install">
+    <h2>Installation</h2>
+    <p class="subtitle">Get started in under a minute</p>
+    <div class="steps">
+      <div class="step">
+        <h4>Get the Extension</h4>
+        <p>Install from Chrome Web Store or build from source on GitHub.</p>
+      </div>
+      <div class="step">
+        <h4>Open Side Panel</h4>
+        <p>Click the extension icon or use Chrome's side panel button.</p>
+      </div>
+      <div class="step">
+        <h4>Add API Keys</h4>
+        <p>Enter your keys for OpenAI, Anthropic, Google, or Mistral.</p>
+      </div>
+      <div class="step">
+        <h4>Start Coding</h4>
+        <p>Use fetch() normally - cross-origin requests are handled automatically.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section id="how-it-works">
+    <h2>How It Works</h2>
+    <p class="subtitle">The extension intercepts fetch() and routes requests through its background script</p>
+    <div class="diagram">
+YOUR PAGE                     CONTENT SCRIPT               BACKGROUND (NO CORS!)
+    |                              |                              |
+    |  fetch("api.openai.com")     |                              |
+    |----------------------------->|                              |
+    |                              |  chrome.runtime.sendMessage  |
+    |                              |----------------------------->|
+    |                              |                              |  1. Validate allowlists
+    |                              |                              |  2. Inject API key
+    |                              |                              |  3. Make real fetch()
+    |                              |                              |  4. Return response
+    |                              |<-----------------------------|
+    |<-----------------------------|                              |
+    |  Response data               |                              |
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section>
+    <h2>FAQ</h2>
+    <div class="faq-list">
+      <div class="faq-item">
+        <h4>Is my API key secure?</h4>
+        <p>Yes. API keys are stored in Chrome's extension storage, which is not accessible to page JavaScript. Keys are only used when making requests through the bridge.</p>
+      </div>
+      <div class="faq-item">
+        <h4>Does this work with any API?</h4>
+        <p>Yes. While we have built-in support for major AI providers, you can add custom injection rules for any API.</p>
+      </div>
+      <div class="faq-item">
+        <h4>Is there a request size limit?</h4>
+        <p>Bodies are limited to 5 MB due to Chrome extension messaging constraints. This is sufficient for most API calls.</p>
+      </div>
+      <div class="faq-item">
+        <h4>Does it support streaming responses?</h4>
+        <p>Not currently. Responses are fully buffered before being returned to the page.</p>
+      </div>
+      <div class="faq-item">
+        <h4>Can I use this on file:// URLs?</h4>
+        <p>Yes. Enable "Allow access to file URLs" in the extension settings at chrome://extensions.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="links">
+      <a href="https://github.com/franzenzenhofer/franzai-bridge-v2" target="_blank">GitHub</a>
+      <a href="/demo/">Demo</a>
+      <a href="/privacy.html">Privacy Policy</a>
+    </div>
+    <div class="copyright">
+      FranzAI Bridge V2 - MIT License
+    </div>
+  </footer>
+
+  <!-- Extension Detection Script -->
+  <script>
+    async function checkExtension() {
+      const statusDot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+
+      try {
+        if (window.franzai && typeof window.franzai.ping === 'function') {
+          const result = await window.franzai.ping();
+          if (result && result.ok) {
+            statusDot.className = 'status-dot installed';
+            statusText.textContent = 'Extension installed (v' + result.version + ')';
+            return;
+          }
+        }
+      } catch (e) {
+        // Extension not available
+      }
+
+      statusDot.className = 'status-dot not-installed';
+      statusText.textContent = 'Extension not detected - Install to get started';
+    }
+
+    // Check after a short delay to allow extension to initialize
+    setTimeout(checkExtension, 500);
+  </script>
+</body>
+</html>

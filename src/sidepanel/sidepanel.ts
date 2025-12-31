@@ -42,9 +42,6 @@ let filterSearch = "";
 let filterMethod = "";
 let filterStatus = "";
 
-// Theme state
-let darkMode = false;
-
 // UI Preferences key for persistence
 const UI_PREFS_KEY = "franzai_ui_prefs";
 
@@ -83,10 +80,6 @@ async function loadUIPrefs() {
       if (prefs.colWidths) colWidths = prefs.colWidths;
       if (prefs.sortColumn) sortColumn = prefs.sortColumn;
       if (prefs.sortDir) sortDir = prefs.sortDir;
-      if (prefs.darkMode !== undefined) {
-        darkMode = prefs.darkMode;
-        applyTheme();
-      }
     }
   } catch (e) {
     log.error("Failed to load UI preferences", e);
@@ -97,31 +90,12 @@ async function loadUIPrefs() {
 const saveUIPrefs = debounce(async () => {
   try {
     await chrome.storage.local.set({
-      [UI_PREFS_KEY]: { colWidths, sortColumn, sortDir, darkMode }
+      [UI_PREFS_KEY]: { colWidths, sortColumn, sortDir }
     });
   } catch (e) {
     log.error("Failed to save UI preferences", e);
   }
 }, 500);
-
-/** Apply current theme */
-function applyTheme() {
-  document.body.classList.toggle("dark-theme", darkMode);
-  const themeBtn = document.getElementById("btnTheme");
-  if (themeBtn) {
-    themeBtn.title = darkMode ? "Switch to light mode" : "Switch to dark mode";
-    themeBtn.innerHTML = darkMode
-      ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
-      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-  }
-}
-
-/** Toggle dark mode */
-function toggleTheme() {
-  darkMode = !darkMode;
-  applyTheme();
-  saveUIPrefs();
-}
 
 /** Check if any filter is active */
 function hasActiveFilters(): boolean {
@@ -1383,11 +1357,6 @@ if (clearFiltersBtn) {
   clearFiltersBtn.onclick = clearFilters;
 }
 
-/** Theme toggle button */
-const themeBtn = document.getElementById("btnTheme");
-if (themeBtn) {
-  themeBtn.onclick = toggleTheme;
-}
 
 /** Export logs as JSON */
 qs<HTMLButtonElement>("btnExportLogs").onclick = () => {
@@ -1434,7 +1403,6 @@ qs<HTMLButtonElement>("btnExportLogs").onclick = () => {
 // Initialize with UI preferences first, then load data
 (async () => {
   await loadUIPrefs();
-  applyTheme();
   applyColumnWidths();
   await loadAll();
 })();
