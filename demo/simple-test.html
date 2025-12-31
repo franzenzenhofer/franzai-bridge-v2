@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FranzAI Bridge V2 - Extension Test</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      text-align: center;
+    }
+    #status {
+      font-size: 48px;
+      margin: 40px 0;
+      padding: 40px;
+      border-radius: 20px;
+    }
+    .detected {
+      background: #22c55e;
+      color: white;
+    }
+    .not-detected {
+      background: #ef4444;
+      color: white;
+    }
+    .checking {
+      background: #f59e0b;
+      color: white;
+    }
+    #details {
+      text-align: left;
+      background: #f3f4f6;
+      padding: 20px;
+      border-radius: 10px;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    button {
+      font-size: 24px;
+      padding: 15px 40px;
+      margin: 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>FranzAI Bridge V2 - Extension Test</h1>
+  <p style="margin-bottom: 20px;"><a href="index.html" style="color: #3b82f6;">← Back to Complete Demo</a></p>
+
+  <div id="status" class="checking">Checking...</div>
+
+  <button onclick="checkExtension()">Check Again</button>
+
+  <div id="details">Loading...</div>
+
+  <script>
+    function checkExtension() {
+      const status = document.getElementById('status');
+      const details = document.getElementById('details');
+
+      status.textContent = 'Checking...';
+      status.className = 'checking';
+
+      // Check all possible indicators
+      const checks = {
+        'window.franzai': typeof window.franzai !== 'undefined',
+        'window.franzai type': typeof window.franzai,
+        'franzai.ping exists': typeof window.franzai?.ping === 'function',
+        'franzai.setMode exists': typeof window.franzai?.setMode === 'function',
+        'franzai.getMode exists': typeof window.franzai?.getMode === 'function',
+      };
+
+      // Try to call ping if available
+      if (checks['franzai.ping exists']) {
+        try {
+          const pingResult = window.franzai.ping();
+          checks['ping() result'] = pingResult;
+        } catch (e) {
+          checks['ping() error'] = e.message;
+        }
+      }
+
+      // Try to get mode if available
+      if (checks['franzai.getMode exists']) {
+        try {
+          const mode = window.franzai.getMode();
+          checks['getMode() result'] = mode;
+        } catch (e) {
+          checks['getMode() error'] = e.message;
+        }
+      }
+
+      // Check for content script marker
+      checks['__franzaiContentScript'] = typeof window.__franzaiContentScript !== 'undefined';
+
+      // Determine overall status
+      const isDetected = checks['window.franzai'];
+
+      if (isDetected) {
+        status.textContent = '✅ EXTENSION DETECTED!';
+        status.className = 'detected';
+      } else {
+        status.textContent = '❌ NOT DETECTED';
+        status.className = 'not-detected';
+      }
+
+      // Show all check results
+      let detailText = 'Check Results:\n\n';
+      for (const [key, value] of Object.entries(checks)) {
+        detailText += `${key}: ${JSON.stringify(value)}\n`;
+      }
+      detailText += '\n--- Raw window.franzai ---\n';
+      detailText += JSON.stringify(window.franzai, null, 2) || 'undefined';
+
+      details.textContent = detailText;
+    }
+
+    // Check on page load
+    window.addEventListener('load', () => {
+      // Wait a bit for content script to inject
+      setTimeout(checkExtension, 500);
+    });
+
+    // Also check immediately
+    setTimeout(checkExtension, 100);
+  </script>
+</body>
+</html>

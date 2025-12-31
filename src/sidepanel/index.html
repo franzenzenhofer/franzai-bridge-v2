@@ -1,0 +1,200 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>FranzAI Bridge V2</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <!-- Line 1: Brand + Version | Refresh + Settings -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="title">FranzAI Bridge</span>
+        <span class="version" id="version">v2</span>
+      </div>
+      <div class="global-actions">
+        <button id="btnRefresh" class="icon-btn" title="Refresh">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </button>
+        <button id="btnSettings" class="settings-btn" title="Settings">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Settings</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Line 2: Tab toolbar with contextual actions -->
+    <nav class="toolbar" id="toolbar-requests">
+      <span class="toolbar-title">Requests</span>
+      <div class="status" id="status">Idle</div>
+      <div class="toolbar-actions">
+        <button id="btnClearLogs" title="Clear all request logs">Clear</button>
+      </div>
+    </nav>
+
+    <nav class="toolbar hidden" id="toolbar-settings">
+      <button id="btnBackToRequests" class="back-btn" title="Back to Requests">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        <span>Back</span>
+      </button>
+      <span class="toolbar-title">Settings</span>
+    </nav>
+
+    <nav class="toolbar hidden" id="toolbar-advanced">
+      <button id="btnBackToSettings" class="back-btn" title="Back to Settings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        <span>Settings</span>
+      </button>
+      <span class="toolbar-title">Advanced</span>
+    </nav>
+
+    <main class="layout">
+      <section id="tab-requests" class="tabpage active">
+        <div class="table-header" id="tableHeader">
+          <div data-col="ts" class="sortable">Time</div>
+          <div data-col="method" class="sortable">Method</div>
+          <div data-col="url" class="sortable">URL</div>
+          <div data-col="status" class="sortable">Status</div>
+          <div data-col="elapsed" class="sortable">ms</div>
+        </div>
+        <div class="requests-layout">
+          <div class="listPane">
+            <div id="logsList" class="list"></div>
+          </div>
+          <div class="detailPane" id="detailPane">
+            <div id="details" class="details">
+              <div class="hint">Select a request to inspect</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-settings" class="tabpage">
+        <div class="settings">
+          <section class="card">
+            <h2>ENV Vars (stored in extension, never exposed to pages)</h2>
+            <div class="row">
+              <input id="envName" placeholder="NAME (e.g. OPENAI_API_KEY)" />
+              <input id="envValue" placeholder="VALUE" type="password" />
+              <button id="btnAddEnv">Add</button>
+            </div>
+            <div id="envTable" class="table"></div>
+            <div class="note">Tip: You can add any ENV vars, not only the built-ins.</div>
+          </section>
+
+          <section class="card">
+            <h2>Allowed Page Origins (who can call franzai.fetch)</h2>
+            <div class="row">
+              <input id="originValue" placeholder="e.g. https://bridge.franzai.com or http://localhost:*" />
+              <button id="btnAddOrigin">Add</button>
+            </div>
+            <div id="originsTable" class="table"></div>
+          </section>
+
+          <section class="card">
+            <h2>Allowed Destinations (where requests may go)</h2>
+            <div class="row">
+              <input id="destValue" placeholder="e.g. api.openai.com or https://api.mistral.ai/*" />
+              <button id="btnAddDest">Add</button>
+            </div>
+            <div id="destsTable" class="table"></div>
+          </section>
+
+          <!-- Link to Advanced tab -->
+          <section class="card link-card" id="advancedLink">
+            <div class="link-card-content">
+              <div>
+                <h2>Advanced: Custom Injection Rules</h2>
+                <div class="note">For power users. Add custom header/query injection for non-standard APIs.</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </section>
+
+          <!-- Reset Settings at BOTTOM with full explanation -->
+          <section class="card danger-zone">
+            <h2>⚠️ Reset All Settings</h2>
+            <div class="reset-explanation">
+              <p><strong>What this does:</strong></p>
+              <ul>
+                <li>Deletes ALL your API keys (OpenAI, Anthropic, Google, Mistral, custom)</li>
+                <li>Resets allowed origins to default (<code>*</code> = all sites)</li>
+                <li>Resets allowed destinations to default (<code>*</code> = all APIs)</li>
+                <li>Removes all custom injection rules</li>
+              </ul>
+              <p><strong>When to use:</strong></p>
+              <ul>
+                <li>Extension is behaving unexpectedly</li>
+                <li>You want to start fresh with clean configuration</li>
+                <li>You're switching to a different set of API keys</li>
+              </ul>
+              <p class="warning-text">This action cannot be undone. Your API keys will be permanently deleted from this extension.</p>
+            </div>
+            <button id="btnResetSettings" class="danger-btn">Reset All Settings to Defaults</button>
+          </section>
+        </div>
+      </section>
+
+      <!-- Advanced tab (hidden by default, accessed from Settings) -->
+      <section id="tab-advanced" class="tabpage">
+        <div class="settings">
+          <section class="card">
+            <h2>Custom Injection Rules</h2>
+            <div class="advanced-explanation">
+              <p><strong>What are injection rules?</strong></p>
+              <p>When you make a request through FranzAI Bridge to a matching host, the extension automatically injects headers or query parameters. This is how API keys get added to your requests.</p>
+
+              <p><strong>Built-in rules (automatic):</strong></p>
+              <ul>
+                <li><code>api.openai.com</code> → Authorization: Bearer ${OPENAI_API_KEY}</li>
+                <li><code>api.anthropic.com</code> → x-api-key: ${ANTHROPIC_API_KEY}</li>
+                <li><code>generativelanguage.googleapis.com</code> → x-goog-api-key: ${GOOGLE_API_KEY}</li>
+                <li><code>api.mistral.ai</code> → Authorization: Bearer ${MISTRAL_API_KEY}</li>
+              </ul>
+
+              <p><strong>When to add custom rules:</strong></p>
+              <ul>
+                <li>Using an API not listed above</li>
+                <li>Need to inject custom headers (e.g., X-Custom-Header)</li>
+                <li>Need to inject query parameters (e.g., ?api_key=xxx)</li>
+              </ul>
+
+              <p><strong>How to use:</strong></p>
+              <ol>
+                <li>First add your API key as an ENV var (e.g., MY_CUSTOM_KEY)</li>
+                <li>Set the host pattern (e.g., <code>api.custom.com</code> or <code>*.custom.com</code>)</li>
+                <li>Add headers JSON like: <code>{ "X-API-Key": "${MY_CUSTOM_KEY}" }</code></li>
+                <li>Or add query JSON like: <code>{ "key": "${MY_CUSTOM_KEY}" }</code></li>
+              </ol>
+            </div>
+
+            <div class="row">
+              <input id="ruleHost" placeholder="Host pattern (e.g. *.example.com)" />
+            </div>
+
+            <div class="row">
+              <textarea
+                id="ruleHeaders"
+                rows="4"
+                placeholder='JSON headers, e.g. { "Authorization": "Bearer ${MY_KEY}" }'
+              ></textarea>
+              <textarea
+                id="ruleQuery"
+                rows="4"
+                placeholder='JSON query, e.g. { "key": "${MY_KEY}" }'
+              ></textarea>
+            </div>
+
+            <div class="row">
+              <button id="btnAddRule">Add Rule</button>
+            </div>
+
+            <div id="rulesTable" class="table"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="./sidepanel.js"></script>
+  </body>
+</html>

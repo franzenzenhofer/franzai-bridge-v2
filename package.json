@@ -1,0 +1,29 @@
+{
+  "name": "franzai-bridge-v2",
+  "version": "2.0.21",
+  "private": true,
+  "type": "module",
+  "description": "FranzAI Bridge V2 - MV3 extension that routes cross-origin fetch through a secure background bridge.",
+  "scripts": {
+    "build": "node scripts/bump-version.mjs && node esbuild.config.mjs",
+    "build:nobump": "node esbuild.config.mjs",
+    "dev": "node esbuild.config.mjs --watch",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest --run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:all": "npm run test && npm run test:e2e",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/chrome": "^0.0.278",
+    "@vitest/coverage-v8": "^1.6.0",
+    "dotenv": "^17.2.3",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.3",
+    "vitest": "^1.6.0"
+  }
+}
