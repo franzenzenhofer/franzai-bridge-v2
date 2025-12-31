@@ -320,19 +320,6 @@
       color: var(--muted);
     }
 
-    /* Architecture Diagram */
-    .diagram {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 32px;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      white-space: pre;
-      overflow-x: auto;
-      text-align: center;
-    }
-
     /* FAQ */
     .faq-list {
       max-width: 800px;
@@ -383,6 +370,140 @@
     footer .copyright {
       color: var(--muted);
       font-size: 12px;
+    }
+
+    /* Flow Diagram */
+    .flow-diagram {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .flow-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .flow-row.return {
+      margin-bottom: 0;
+      margin-top: 24px;
+      opacity: 0.7;
+    }
+
+    .flow-box {
+      background: white;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      text-align: center;
+      min-width: 200px;
+    }
+
+    .flow-box.page {
+      border-color: var(--accent);
+    }
+
+    .flow-box.content {
+      border-color: var(--warning);
+    }
+
+    .flow-box.background {
+      border-color: var(--success);
+    }
+
+    .flow-box-title {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .flow-box code {
+      display: block;
+      background: var(--panel);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .flow-box-badge {
+      display: inline-block;
+      background: var(--success);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .flow-arrow {
+      font-size: 24px;
+      color: var(--muted);
+      font-weight: 300;
+    }
+
+    .flow-steps {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      padding: 20px;
+      background: rgba(24, 128, 56, 0.08);
+      border-radius: 8px;
+      flex-wrap: wrap;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .flow-step-num {
+      width: 20px;
+      height: 20px;
+      background: var(--success);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .flow-muted {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 768px) {
+      .flow-row {
+        flex-direction: column;
+        gap: 8px;
+      }
+      .flow-arrow {
+        transform: rotate(90deg);
+      }
+      .flow-row.return .flow-arrow {
+        transform: rotate(-90deg);
+      }
+      .flow-box {
+        min-width: 180px;
+      }
+      .flow-steps {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
     }
 
     /* Download Box */
@@ -1074,20 +1195,42 @@ console.<span class="function">log</span>(data.choices[<span class="keyword">0</
   <section id="how-it-works">
     <h2>How It Works</h2>
     <p class="subtitle">The extension intercepts fetch() and routes requests through its background script</p>
-    <div class="diagram">
-YOUR PAGE                     CONTENT SCRIPT               BACKGROUND (NO CORS!)
-    |                              |                              |
-    |  fetch("api.openai.com")     |                              |
-    |----------------------------->|                              |
-    |                              |  chrome.runtime.sendMessage  |
-    |                              |----------------------------->|
-    |                              |                              |  1. Validate allowlists
-    |                              |                              |  2. Inject API key
-    |                              |                              |  3. Make real fetch()
-    |                              |                              |  4. Return response
-    |                              |<-----------------------------|
-    |<-----------------------------|                              |
-    |  Response data               |                              |
+    <div class="flow-diagram">
+      <div class="flow-row">
+        <div class="flow-box page">
+          <div class="flow-box-title">Your Page</div>
+          <code>fetch("api.openai.com")</code>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box content">
+          <div class="flow-box-title">Content Script</div>
+          <code>chrome.runtime.sendMessage</code>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-box background">
+          <div class="flow-box-title">Background Script</div>
+          <div class="flow-box-badge">No CORS!</div>
+        </div>
+      </div>
+      <div class="flow-steps">
+        <div class="flow-step"><span class="flow-step-num">1</span> Validate allowlists</div>
+        <div class="flow-step"><span class="flow-step-num">2</span> Inject API key</div>
+        <div class="flow-step"><span class="flow-step-num">3</span> Make real fetch()</div>
+        <div class="flow-step"><span class="flow-step-num">4</span> Return response</div>
+      </div>
+      <div class="flow-row return">
+        <div class="flow-box page">
+          <code>response.json()</code>
+        </div>
+        <div class="flow-arrow">←</div>
+        <div class="flow-box content">
+          <span class="flow-muted">passes through</span>
+        </div>
+        <div class="flow-arrow">←</div>
+        <div class="flow-box background">
+          <span class="flow-muted">response data</span>
+        </div>
+      </div>
     </div>
   </section>
 
