@@ -7,6 +7,7 @@
   "scripts": {
     "build": "node scripts/bump-version.mjs && node esbuild.config.mjs",
     "build:nobump": "node esbuild.config.mjs",
+    "build:zip": "node scripts/build-zip.mjs",
     "dev": "node esbuild.config.mjs --watch",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest --run",
@@ -15,7 +16,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:all": "npm run test && npm run test:e2e",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "deploy": "npm run build:zip && npx wrangler pages deploy ./public --project-name=franzai-bridge"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
