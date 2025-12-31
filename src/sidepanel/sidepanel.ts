@@ -28,15 +28,20 @@ const logsList = qs<HTMLDivElement>("logsList");
 const details = qs<HTMLDivElement>("details");
 const statusEl = qs<HTMLDivElement>("status");
 
-// Column widths (persisted)
-const DEFAULT_COL_WIDTHS = [50, 45, -1, 45, 40]; // -1 = flex
+// Column widths (persisted) - Time, Method, Host, Path, Status, ms
+const DEFAULT_COL_WIDTHS = [50, 45, 90, -1, 45, 40]; // -1 = flex
 let colWidths = [...DEFAULT_COL_WIDTHS];
 
 // Sorting state
-type SortColumn = "ts" | "method" | "url" | "status" | "elapsed";
+type SortColumn = "ts" | "method" | "host" | "url" | "status" | "elapsed";
 type SortDir = "asc" | "desc";
 let sortColumn: SortColumn = "ts";
 let sortDir: SortDir = "desc"; // Newest first by default
+
+// Filter state
+let filterSearch = "";
+let filterMethod = "";
+let filterStatus = "";
 
 // Detail pane height (persisted)
 let detailHeight = 60; // percentage
@@ -74,6 +79,24 @@ function getStatusClass(status: number | undefined, error: string | undefined): 
   return "";
 }
 
+/** JSON syntax highlighting */
+function highlightJson(json: string): string {
+  // Escape HTML first
+  const escaped = escapeHtml(json);
+
+  // Highlight different parts
+  return escaped
+    // Strings (including keys)
+    .replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, (match, content) => {
+      // Check if it's a key (followed by :)
+      return `<span class="json-string">"${content}"</span>`;
+    })
+    // Numbers
+    .replace(/\b(-?\d+\.?\d*)\b/g, '<span class="json-number">$1</span>')
+    // Booleans and null
+    .replace(/\b(true|false|null)\b/g, '<span class="json-bool">$1</span>');
+}
+
 function createLogItem(l: LogEntry): HTMLDivElement {
   const div = document.createElement("div");
   div.className = "item" + (l.id === selectedLogId ? " active" : "");
@@ -82,16 +105,18 @@ function createLogItem(l: LogEntry): HTMLDivElement {
   const statusClass = getStatusClass(l.status, l.error);
   const ms = l.elapsedMs != null ? `${l.elapsedMs}` : "—";
 
-  // Extract just the path for display (compact for sidebar)
-  let displayUrl = l.url;
+  // Extract host and path separately
+  let host = "";
+  let path = l.url;
   try {
     const u = new URL(l.url);
-    displayUrl = u.pathname + u.search;
-    if (displayUrl.length > 40) {
-      displayUrl = displayUrl.substring(0, 37) + "...";
+    host = u.host;
+    path = u.pathname + u.search;
+    if (path.length > 40) {
+      path = path.substring(0, 37) + "...";
     }
   } catch {
-    // Keep full URL
+    // Keep full URL as path
   }
 
   // Time column (first)
@@ -107,10 +132,17 @@ function createLogItem(l: LogEntry): HTMLDivElement {
   methodDiv.textContent = l.method;
   div.appendChild(methodDiv);
 
-  // URL column
+  // Host column
+  const hostDiv = document.createElement("div");
+  hostDiv.className = "host";
+  hostDiv.textContent = host;
+  hostDiv.title = host;
+  div.appendChild(hostDiv);
+
+  // Path column
   const urlDiv = document.createElement("div");
   urlDiv.className = "url";
-  urlDiv.textContent = displayUrl;
+  urlDiv.textContent = path;
   urlDiv.title = l.url;
   div.appendChild(urlDiv);
 
@@ -137,6 +169,35 @@ function closeDetailPane() {
   document.querySelectorAll(".item.active").forEach(el => el.classList.remove("active"));
 }
 
+function filterLogs(logsToFilter: LogEntry[]): LogEntry[] {
+  return logsToFilter.filter(l => {
+    // URL search
+    if (filterSearch && !l.url.toLowerCase().includes(filterSearch.toLowerCase())) {
+      return false;
+    }
+    // Method filter
+    if (filterMethod && l.method !== filterMethod) {
+      return false;
+    }
+    // Status filter
+    if (filterStatus) {
+      const status = l.status ?? 0;
+      if (filterStatus === "success" && (status < 200 || status >= 300)) return false;
+      if (filterStatus === "redirect" && (status < 300 || status >= 400)) return false;
+      if (filterStatus === "error" && status < 400 && !l.error) return false;
+    }
+    return true;
+  });
+}
+
+function getHost(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "";
+  }
+}
+
 function sortLogs(logsToSort: LogEntry[]): LogEntry[] {
   const sorted = [...logsToSort];
   const dir = sortDir === "asc" ? 1 : -1;
@@ -149,6 +210,9 @@ function sortLogs(logsToSort: LogEntry[]): LogEntry[] {
         break;
       case "method":
         cmp = a.method.localeCompare(b.method);
+        break;
+      case "host":
+        cmp = getHost(a.url).localeCompare(getHost(b.url));
         break;
       case "url":
         cmp = a.url.localeCompare(b.url);
@@ -190,8 +254,17 @@ function renderLogs() {
     return;
   }
 
-  // Sort logs based on current sort state
-  const sortedLogs = sortLogs(logs);
+  // Filter then sort logs
+  const filteredLogs = filterLogs(logs);
+  const sortedLogs = sortLogs(filteredLogs);
+
+  // Update request count
+  const countEl = document.getElementById("requestCount");
+  if (countEl) {
+    const filtered = filteredLogs.length;
+    const total = logs.length;
+    countEl.textContent = filtered === total ? String(total) : `${filtered}/${total}`;
+  }
 
   for (const l of sortedLogs) {
     const div = createLogItem(l);
@@ -239,7 +312,7 @@ function copyToClipboard(text: string, btn: HTMLButtonElement) {
   });
 }
 
-function createSection(title: string, content: string, id: string): HTMLElement {
+function createSection(title: string, content: string, id: string, useHighlight = true): HTMLElement {
   const section = document.createElement("div");
   section.className = "detail-section";
 
@@ -263,7 +336,13 @@ function createSection(title: string, content: string, id: string): HTMLElement 
 
   const pre = document.createElement("pre");
   pre.id = id;
-  pre.textContent = content;
+
+  // Apply syntax highlighting for JSON content
+  if (useHighlight && (content.startsWith("{") || content.startsWith("["))) {
+    pre.innerHTML = highlightJson(content);
+  } else {
+    pre.textContent = content;
+  }
 
   section.appendChild(header);
   section.appendChild(pre);
@@ -274,9 +353,14 @@ function createSection(title: string, content: string, id: string): HTMLElement 
 function renderDetails(l: LogEntry) {
   details.innerHTML = "";
 
-  // Top bar with Copy All and Close buttons
+  // Top bar with Copy URL, Copy All and Close buttons
   const topBar = document.createElement("div");
   topBar.className = "detail-top-bar";
+
+  const copyUrlBtn = document.createElement("button");
+  copyUrlBtn.className = "copy-url-btn";
+  copyUrlBtn.textContent = "Copy URL";
+  copyUrlBtn.onclick = () => copyToClipboard(l.url, copyUrlBtn);
 
   const copyAllBtn = document.createElement("button");
   copyAllBtn.className = "copy-all-btn";
@@ -311,6 +395,7 @@ function renderDetails(l: LogEntry) {
     copyToClipboard(JSON.stringify(allData, null, 2), copyAllBtn);
   };
 
+  topBar.appendChild(copyUrlBtn);
   topBar.appendChild(copyAllBtn);
   topBar.appendChild(closeBtn);
   details.appendChild(topBar);
@@ -1084,5 +1169,63 @@ setTimeout(() => {
 // Display version
 const versionEl = document.getElementById("version");
 if (versionEl) versionEl.textContent = `v${BRIDGE_VERSION}`;
+
+/** Filter event handlers */
+qs<HTMLInputElement>("filterSearch").oninput = (e) => {
+  filterSearch = (e.target as HTMLInputElement).value;
+  renderLogs();
+};
+
+qs<HTMLSelectElement>("filterMethod").onchange = (e) => {
+  filterMethod = (e.target as HTMLSelectElement).value;
+  renderLogs();
+};
+
+qs<HTMLSelectElement>("filterStatus").onchange = (e) => {
+  filterStatus = (e.target as HTMLSelectElement).value;
+  renderLogs();
+};
+
+/** Export logs as JSON */
+qs<HTMLButtonElement>("btnExportLogs").onclick = () => {
+  if (!logs.length) {
+    showToast("No logs to export", true);
+    return;
+  }
+
+  const exportData = {
+    exportedAt: new Date().toISOString(),
+    version: BRIDGE_VERSION,
+    totalLogs: logs.length,
+    logs: logs.map(l => ({
+      id: l.id,
+      ts: new Date(l.ts).toISOString(),
+      method: l.method,
+      url: l.url,
+      status: l.status,
+      statusText: l.statusText,
+      elapsedMs: l.elapsedMs,
+      error: l.error,
+      requestHeaders: l.requestHeaders,
+      requestBody: l.requestBodyPreview,
+      responseHeaders: l.responseHeaders,
+      responseBody: l.responseBodyPreview,
+      pageOrigin: l.pageOrigin,
+      tabId: l.tabId
+    }))
+  };
+
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `franzai-bridge-logs-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  showToast(`Exported ${logs.length} logs`);
+};
 
 loadAll();

@@ -26,8 +26,26 @@
     <!-- Line 2: Tab toolbar with contextual actions -->
     <nav class="toolbar" id="toolbar-requests">
       <span class="toolbar-title">Requests</span>
-      <div class="status" id="status">Idle</div>
+      <span class="request-count" id="requestCount">0</span>
+      <div class="filter-bar">
+        <input type="text" id="filterSearch" placeholder="Filter URL..." class="filter-input" />
+        <select id="filterMethod" class="filter-select">
+          <option value="">All Methods</option>
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="PATCH">PATCH</option>
+          <option value="DELETE">DELETE</option>
+        </select>
+        <select id="filterStatus" class="filter-select">
+          <option value="">All Status</option>
+          <option value="success">2xx Success</option>
+          <option value="redirect">3xx Redirect</option>
+          <option value="error">4xx/5xx Error</option>
+        </select>
+      </div>
       <div class="toolbar-actions">
+        <button id="btnExportLogs" title="Export logs as JSON">Export</button>
         <button id="btnClearLogs" title="Clear all request logs">Clear</button>
       </div>
     </nav>
@@ -53,7 +71,8 @@
         <div class="table-header" id="tableHeader">
           <div data-col="ts" class="sortable">Time</div>
           <div data-col="method" class="sortable">Method</div>
-          <div data-col="url" class="sortable">URL</div>
+          <div data-col="host" class="sortable">Host</div>
+          <div data-col="url" class="sortable">Path</div>
           <div data-col="status" class="sortable">Status</div>
           <div data-col="elapsed" class="sortable">ms</div>
         </div>
@@ -72,7 +91,7 @@
       <section id="tab-settings" class="tabpage">
         <div class="settings">
           <section class="card">
-            <h2>ENV Vars (stored in extension, never exposed to pages)</h2>
+            <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> ENV Vars (stored in extension, never exposed to pages)</h2>
             <div class="row">
               <input id="envName" placeholder="NAME (e.g. OPENAI_API_KEY)" />
               <input id="envValue" placeholder="VALUE" type="password" />
@@ -83,7 +102,7 @@
           </section>
 
           <section class="card">
-            <h2>Allowed Page Origins (who can call franzai.fetch)</h2>
+            <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Allowed Page Origins (who can call franzai.fetch)</h2>
             <div class="row">
               <input id="originValue" placeholder="e.g. https://bridge.franzai.com or http://localhost:*" />
               <button id="btnAddOrigin">Add</button>
@@ -92,7 +111,7 @@
           </section>
 
           <section class="card">
-            <h2>Allowed Destinations (where requests may go)</h2>
+            <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Allowed Destinations (where requests may go)</h2>
             <div class="row">
               <input id="destValue" placeholder="e.g. api.openai.com or https://api.mistral.ai/*" />
               <button id="btnAddDest">Add</button>
@@ -104,7 +123,7 @@
           <section class="card link-card" id="advancedLink">
             <div class="link-card-content">
               <div>
-                <h2>Advanced: Custom Injection Rules</h2>
+                <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg> Advanced: Custom Injection Rules</h2>
                 <div class="note">For power users. Add custom header/query injection for non-standard APIs.</div>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
@@ -139,7 +158,7 @@
       <section id="tab-advanced" class="tabpage">
         <div class="settings">
           <section class="card">
-            <h2>Custom Injection Rules</h2>
+            <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg> Custom Injection Rules</h2>
             <div class="advanced-explanation">
               <p><strong>What are injection rules?</strong></p>
               <p>When you make a request through FranzAI Bridge to a matching host, the extension automatically injects headers or query parameters. This is how API keys get added to your requests.</p>

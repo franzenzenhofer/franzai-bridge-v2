@@ -150,20 +150,53 @@ html, body {
   color: var(--text);
 }
 
-.status {
+.request-count {
   font-size: 10px;
-  color: var(--muted);
-  padding: 2px 8px;
-  background: var(--panel);
-  border-radius: 3px;
-  font-family: var(--font-mono);
-  margin-left: auto;
-  margin-right: 8px;
+  color: white;
+  background: var(--accent);
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 500;
+  min-width: 20px;
+  text-align: center;
 }
 
-.status.error {
-  color: var(--error);
-  background: rgba(217, 48, 37, 0.1);
+.filter-bar {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+  flex: 1;
+  max-width: 400px;
+}
+
+.filter-input {
+  flex: 1;
+  min-width: 80px;
+  padding: 3px 8px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.filter-select {
+  padding: 3px 4px;
+  font-size: 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 /* Danger zone card */
@@ -303,7 +336,7 @@ html, body {
 /* Network table header - compact for sidebar */
 .table-header {
   display: grid;
-  grid-template-columns: 50px 45px 1fr 45px 40px;
+  grid-template-columns: 50px 45px 90px 1fr 45px 40px;
   background: var(--panel);
   border-bottom: 1px solid var(--border);
   font-size: 10px;
@@ -434,6 +467,20 @@ html, body {
   border-bottom: 1px solid var(--border);
   background: var(--panel);
   flex-shrink: 0;
+}
+
+.copy-url-btn {
+  padding: 4px 12px;
+  font-size: 11px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.copy-url-btn:hover {
+  background: var(--panel-lighter);
 }
 
 .copy-all-btn {
@@ -633,7 +680,7 @@ textarea.error {
 
 .item {
   display: grid;
-  grid-template-columns: 50px 45px 1fr 45px 40px;
+  grid-template-columns: 50px 45px 90px 1fr 45px 40px;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   align-items: center;
@@ -665,6 +712,11 @@ textarea.error {
 .item .method.PUT { color: var(--method-put); }
 .item .method.DELETE { color: var(--method-delete); }
 .item .method.PATCH { color: var(--warning); }
+
+.item .host {
+  color: var(--muted);
+  font-size: 10px;
+}
 
 .item .url {
   color: var(--text);
@@ -735,6 +787,11 @@ pre {
   color: var(--text);
 }
 
+/* JSON syntax highlighting */
+.json-string { color: #c41a16; }
+.json-number { color: #1c00cf; }
+.json-bool { color: #0d904f; }
+
 /* Settings tab */
 .settings {
   padding: 12px;
@@ -755,6 +812,14 @@ pre {
   font-weight: 600;
   margin-bottom: 10px;
   color: var(--text-bright);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card h2 svg {
+  flex-shrink: 0;
+  color: var(--accent);
 }
 
 .row {
@@ -944,6 +1009,7 @@ button:active {
     grid-template-columns: 45px 40px 1fr 40px;
   }
 
+  .item .host,
   .item .elapsed {
     display: none;
   }
@@ -952,7 +1018,8 @@ button:active {
     grid-template-columns: 45px 40px 1fr 40px;
   }
 
-  .table-header > div:nth-child(5) {
+  .table-header > div:nth-child(3),
+  .table-header > div:nth-child(6) {
     display: none;
   }
 }
