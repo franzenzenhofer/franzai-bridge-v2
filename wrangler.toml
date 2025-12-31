@@ -1,10 +1,4 @@
-name = "franzai-bridge-v2"
+name = "franzai-bridge"
 compatibility_date = "2025-12-31"
 account_id = "ecf21e85812dfa5b2a35245257fc71f5"
-
-[site]
-bucket = "./public"
-
-[[routes]]
-pattern = "bridge.franzai.com"
-custom_domain = true
+pages_build_output_dir = "./public"
