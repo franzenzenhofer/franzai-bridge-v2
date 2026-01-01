@@ -8,10 +8,22 @@ import type {
   LogEntry
 } from "./shared/types";
 import { BG_EVT, BG_MSG, type BgEvent, type BgMessage } from "./shared/messages";
-import { getSettings, setSettings, appendLog, getLogs, clearLogs } from "./shared/storage";
+import {
+  getSettings,
+  setSettings,
+  appendLog,
+  getLogs,
+  clearLogs,
+  getDomainPreference,
+  getDomainPreferences,
+  setDomainPreference,
+  removeDomainPreference
+} from "./shared/storage";
+import type { BridgeStatus } from "./shared/types";
 import { matchesAnyPattern, wildcardToRegExp } from "./shared/wildcard";
 import { builtinProviderRules, expandTemplate, headersToObject, hasHeader } from "./shared/providers";
 import {
+  BRIDGE_VERSION,
   FETCH_TIMEOUT_MS,
   REQUEST_BODY_PREVIEW_LIMIT,
   RESPONSE_BODY_PREVIEW_LIMIT
@@ -24,6 +36,24 @@ const log = createLogger("bg");
 const ports = new Set<chrome.runtime.Port>();
 const inFlight = new Map<string, AbortController>();
 const abortedByPage = new Set<string>();
+
+// Track tabs where we've already auto-opened the sidepanel
+const autoOpenedTabs = new Set<number>();
+
+async function maybeAutoOpenSidepanel(tabId: number | undefined) {
+  if (!tabId) return;
+  if (autoOpenedTabs.has(tabId)) return;
+
+  // Mark as opened so we only do this once per tab
+  autoOpenedTabs.add(tabId);
+
+  try {
+    log.info("Auto-opening sidepanel on first request for tab", tabId);
+    await chrome.sidePanel.open({ tabId });
+  } catch (e) {
+    log.warn("Could not auto-open sidepanel", e);
+  }
+}
 
 function broadcast(evt: BgEvent) {
   for (const port of ports) {
@@ -143,7 +173,8 @@ chrome.runtime.onInstalled.addListener(async () => {
 });
 
 chrome.runtime.onConnect.addListener((port) => {
-  if (port.name !== "FRANZAI_SIDEPANEL") return;
+  // Accept both sidepanel AND content script ports for broadcasting
+  if (port.name !== "FRANZAI_SIDEPANEL" && port.name !== "FRANZAI_CONTENT") return;
   ports.add(port);
   port.onDisconnect.addListener(() => ports.delete(port));
 });
@@ -184,6 +215,110 @@ chrome.runtime.onMessage.addListener((msg: BgMessage, sender, sendResponse) => {
           sendResponse({ ok: true });
           return;
         }
+        case BG_MSG.IS_KEY_SET: {
+          const settings = await getSettings();
+          const keyName = msg.payload?.keyName;
+          // Check if the key exists and has a non-empty value
+          const isSet = !!(keyName && settings.env[keyName]?.trim());
+          // NEVER return the actual key value - only boolean
+          sendResponse({ ok: true, isSet });
+          return;
+        }
+        case BG_MSG.GET_DOMAIN_STATUS: {
+          const domain = msg.payload?.domain;
+          if (!domain) {
+            sendResponse({ ok: false, error: "No domain provided" });
+            return;
+          }
+          const settings = await getSettings();
+          const pref = await getDomainPreference(domain);
+
+          // Check if any API keys are configured
+          const hasApiKeys = Object.values(settings.env).some(v => v?.trim());
+
+          // Determine enabled status: user pref > meta pref > default (off)
+          let domainEnabled = false;
+          let domainSource: "user" | "meta" | "default" = "default";
+
+          if (pref) {
+            domainEnabled = pref.enabled;
+            domainSource = pref.source;
+          }
+
+          // All origins are allowed - domain control is handled via per-domain enable/disable
+          const originAllowed = true;
+
+          const ready = domainEnabled && originAllowed;
+          let reason = "";
+          if (!domainEnabled) {
+            reason = domainSource === "default"
+              ? "Bridge is disabled for this domain. Enable it in the extension or add <meta name=\"franzai-bridge\" content=\"enabled\"> to your page."
+              : "Bridge was disabled by user for this domain.";
+          } else if (!hasApiKeys) {
+            reason = "No API keys configured. Add keys in extension settings.";
+          } else {
+            reason = "Bridge is ready.";
+          }
+
+          const status: BridgeStatus = {
+            installed: true,
+            version: BRIDGE_VERSION,
+            domainEnabled,
+            domainSource,
+            originAllowed,
+            hasApiKeys,
+            ready,
+            reason
+          };
+
+          sendResponse({ ok: true, status });
+          return;
+        }
+        case BG_MSG.SET_DOMAIN_ENABLED: {
+          const { domain, enabled } = msg.payload ?? {};
+          if (!domain) {
+            sendResponse({ ok: false, error: "No domain provided" });
+            return;
+          }
+          await setDomainPreference(domain, enabled, "user");
+          broadcast({ type: BG_EVT.DOMAIN_PREFS_UPDATED });
+          sendResponse({ ok: true });
+          return;
+        }
+        case BG_MSG.GET_ALL_DOMAIN_PREFS: {
+          const prefs = await getDomainPreferences();
+          sendResponse({ ok: true, prefs });
+          return;
+        }
+        case BG_MSG.REPORT_META_TAG: {
+          const { domain, enabled } = msg.payload ?? {};
+          if (!domain) {
+            sendResponse({ ok: false, error: "No domain provided" });
+            return;
+          }
+          // Only set if no user preference exists (meta tag is lower priority)
+          await setDomainPreference(domain, enabled, "meta");
+          broadcast({ type: BG_EVT.DOMAIN_PREFS_UPDATED });
+
+          // Auto-open sidepanel when meta tag enables the domain
+          if (enabled && sender.tab?.id) {
+            maybeAutoOpenSidepanel(sender.tab.id);
+          }
+
+          sendResponse({ ok: true });
+          return;
+        }
+        case BG_MSG.REMOVE_DOMAIN_PREF: {
+          const { domain } = msg.payload ?? {};
+          if (!domain) {
+            sendResponse({ ok: false, error: "No domain provided" });
+            return;
+          }
+          await removeDomainPreference(domain);
+          broadcast({ type: BG_EVT.DOMAIN_PREFS_UPDATED });
+          sendResponse({ ok: true });
+          return;
+        }
         case BG_MSG.FETCH: {
           const settings = await getSettings();
           const payload = msg.payload as FetchRequestFromPage;
@@ -213,16 +348,17 @@ chrome.runtime.onMessage.addListener((msg: BgMessage, sender, sendResponse) => {
             requestBodyPreview: previewBody(init.body, REQUEST_BODY_PREVIEW_LIMIT)
           };
 
-          if (!payload.pageOrigin || !matchesAnyPattern(payload.pageOrigin, settings.allowedOrigins)) {
+          // Always allow all page origins - domain control is handled via per-domain enable/disable
+          if (!payload.pageOrigin) {
             const env = await finalizeWithError({
               requestId: payload.requestId,
               statusText: "Blocked",
-              message: `Blocked: page origin not allowed (${payload.pageOrigin}).`,
+              message: `Blocked: no page origin provided.`,
               started,
               logEntry,
               maxLogs: settings.maxLogs
             });
-            log.warn("Blocked fetch: origin not allowed", payload.pageOrigin);
+            log.warn("Blocked fetch: no origin provided");
             sendResponse(env);
             return;
           }
@@ -326,6 +462,9 @@ chrome.runtime.onMessage.addListener((msg: BgMessage, sender, sendResponse) => {
               elapsedMs
             });
 
+            // Auto-open sidepanel on first request from this tab
+            maybeAutoOpenSidepanel(tabId);
+
             sendResponse({ ok: true, response: responseToPage });
             return;
           } catch (e) {
@@ -397,6 +536,33 @@ chrome.action.onClicked.addListener(async (tab) => {
     } catch (e) {
       log.error("Failed to open sidepanel", e);
     }
+  }
+});
+
+// Clean up auto-opened tracking when tab is closed
+chrome.tabs.onRemoved.addListener((tabId) => {
+  autoOpenedTabs.delete(tabId);
+});
+
+// Auto-open sidepanel when navigating to an enabled domain
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  // Only trigger on complete navigation with a URL
+  if (changeInfo.status !== "complete" || !tab.url) return;
+
+  // Skip non-http(s) URLs
+  if (!tab.url.startsWith("http://") && !tab.url.startsWith("https://")) return;
+
+  try {
+    const url = new URL(tab.url);
+    const domain = url.hostname;
+    const pref = await getDomainPreference(domain);
+
+    // Only auto-open if domain is enabled (user or meta)
+    if (pref?.enabled) {
+      maybeAutoOpenSidepanel(tabId);
+    }
+  } catch {
+    // Invalid URL, ignore
   }
 });
 

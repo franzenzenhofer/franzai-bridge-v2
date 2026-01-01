@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="franzai-bridge" content="enabled">
+  <title>FranzAI Bridge Documentation - Complete API Reference</title>
+  <meta name="description" content="Complete documentation for FranzAI Bridge. Copy this entire page and paste into any AI to build apps.">
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel: #f1f3f4;
+      --text: #202124;
+      --text-bright: #000000;
+      --muted: #5f6368;
+      --border: #dadce0;
+      --accent: #1a73e8;
+      --success: #188038;
+      --error: #d93025;
+      --font-mono: "Roboto Mono", "SF Mono", "Monaco", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 0;
+    }
+
+    .copy-banner {
+      position: sticky;
+      top: 0;
+      background: var(--accent);
+      color: white;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+      gap: 16px;
+    }
+
+    .copy-banner p { font-size: 14px; }
+
+    .copy-btn {
+      background: white;
+      color: var(--accent);
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .copy-btn:hover { background: #f0f0f0; }
+    .copy-btn.copied { background: var(--success); color: white; }
+    .copy-btn .icon-copy, .copy-btn.copied .icon-check { display: inline; }
+    .copy-btn .icon-check, .copy-btn.copied .icon-copy { display: none; }
+    .copy-btn.copied .icon-check { display: inline; }
+    .copy-btn.copied .icon-copy { display: none; }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 24px;
+    }
+
+    h1 { font-size: 36px; margin-bottom: 8px; }
+    .subtitle { color: var(--muted); font-size: 18px; margin-bottom: 48px; }
+    h2 { font-size: 24px; margin-top: 48px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
+    h3 { font-size: 18px; margin-top: 32px; margin-bottom: 12px; color: var(--text-bright); }
+    p { margin-bottom: 16px; }
+
+    code {
+      background: var(--panel);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 14px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 16px 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 16px 0;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    pre code { background: none; padding: 0; color: inherit; }
+    .comment { color: #6a9955; }
+    .keyword { color: #569cd6; }
+    .string { color: #ce9178; }
+    .function { color: #dcdcaa; }
+
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    th, td { text-align: left; padding: 12px; border: 1px solid var(--border); }
+    th { background: var(--panel); font-weight: 600; }
+
+    .note {
+      background: rgba(26, 115, 232, 0.1);
+      border-left: 4px solid var(--accent);
+      padding: 16px;
+      margin: 16px 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    ul, ol { margin: 16px 0; padding-left: 24px; }
+    li { margin-bottom: 8px; }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .back-link:hover { text-decoration: underline; }
+    #markdown-content { display: none; }
+
+    @media (max-width: 768px) {
+      .copy-banner { flex-direction: column; text-align: center; }
+      h1 { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="copy-banner">
+    <p>Copy this entire documentation and paste into any AI assistant to build apps with FranzAI Bridge</p>
+    <button class="copy-btn" id="copyBtn">
+      <svg class="icon-copy" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      <svg class="icon-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+      <span id="copyBtnText">Copy All as Markdown</span>
+    </button>
+  </div>
+
+  <div class="container">
+    <a href="/" class="back-link">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Back to FranzAI Bridge
+    </a>
+
+    <h1>FranzAI Bridge Documentation</h1>
+    <p class="subtitle">Complete reference for building browser AI apps. No backend needed.</p>
+
+    <h2>What is FranzAI Bridge?</h2>
+    <p>FranzAI Bridge is a Chrome extension that lets you call AI APIs (OpenAI, Anthropic, Google, Mistral) directly from any webpage. It solves two problems:</p>
+    <ul>
+      <li><strong>CORS</strong> - Browsers block cross-origin API calls. The extension bypasses this.</li>
+      <li><strong>API Keys</strong> - Keys are stored securely in the extension, never exposed to page JavaScript.</li>
+    </ul>
+
+    <h3>Requirements</h3>
+    <ul>
+      <li><strong>Chrome 111+</strong> - Uses <code>world: "MAIN"</code> for guaranteed synchronous hook installation</li>
+    </ul>
+
+    <h2>Quick Start</h2>
+    <h3>1. Check if extension is installed</h3>
+<pre><code><span class="keyword">const</span> bridge = window.franzai;
+<span class="keyword">if</span> (bridge) {
+  <span class="keyword">const</span> { ok, version } = <span class="keyword">await</span> bridge.<span class="function">ping</span>();
+  console.<span class="function">log</span>(<span class="string">'Bridge ready:'</span>, version);
+} <span class="keyword">else</span> {
+  console.<span class="function">log</span>(<span class="string">'Extension not installed'</span>);
+}</code></pre>
+
+    <h3>2. Make an API call</h3>
+<pre><code><span class="comment">// Just use fetch() - the extension handles everything</span>
+<span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">'https://api.openai.com/v1/chat/completions'</span>, {
+  method: <span class="string">'POST'</span>,
+  headers: { <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span> },
+  body: JSON.<span class="function">stringify</span>({
+    model: <span class="string">'gpt-5-mini'</span>,
+    messages: [{ role: <span class="string">'user'</span>, content: <span class="string">'Hello!'</span> }]
+  })
+});
+
+<span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
+console.<span class="function">log</span>(data.choices[0].message.content);</code></pre>
+
+    <div class="note">
+      <strong>That's it!</strong> The extension automatically injects your API key. No backend server needed.
+    </div>
+
+    <h2>Available Models (Verified January 2026)</h2>
+
+    <h3>OpenAI Models</h3>
+    <table>
+      <tr><th>Model</th><th>Description</th></tr>
+      <tr><td><code>gpt-5.2</code></td><td>Newest, best for complex tasks and coding</td></tr>
+      <tr><td><code>gpt-5-mini</code></td><td>Faster, cost-efficient</td></tr>
+      <tr><td><code>gpt-5-nano</code></td><td>Fastest, most affordable</td></tr>
+      <tr><td><code>gpt-5.1-codex-mini</code></td><td>Optimized for code generation</td></tr>
+    </table>
+
+    <h3>Anthropic Claude Models</h3>
+    <table>
+      <tr><th>Model</th><th>Description</th></tr>
+      <tr><td><code>claude-opus-4-5</code></td><td>Most capable, best for complex tasks</td></tr>
+      <tr><td><code>claude-sonnet-4-5</code></td><td>Balanced performance and cost</td></tr>
+      <tr><td><code>claude-haiku-4-5</code></td><td>Fastest, most affordable</td></tr>
+    </table>
+    <p><em>Use the aliases above (they point to the latest dated version in each family).</em></p>
+
+    <h3>Google Gemini Models</h3>
+    <table>
+      <tr><th>Model</th><th>Description</th></tr>
+      <tr><td><code>gemini-3-pro-preview</code></td><td>Latest, most capable (preview)</td></tr>
+      <tr><td><code>gemini-3-flash-preview</code></td><td>Fast next-gen model (preview)</td></tr>
+      <tr><td><code>gemini-2.5-pro</code></td><td>High capability (stable)</td></tr>
+      <tr><td><code>gemini-2.5-flash</code></td><td>Fast and efficient (stable)</td></tr>
+      <tr><td><code>gemini-2.5-flash-lite</code></td><td>Lightweight, fastest (stable)</td></tr>
+    </table>
+
+    <h3>Mistral Models</h3>
+    <table>
+      <tr><th>Model</th><th>Description</th></tr>
+      <tr><td><code>mistral-large-latest</code></td><td>Flagship model (Mistral Large 3)</td></tr>
+      <tr><td><code>mistral-medium-latest</code></td><td>Balanced (Mistral Medium 3.1)</td></tr>
+      <tr><td><code>mistral-small-latest</code></td><td>Fast and efficient (Mistral Small 3.2)</td></tr>
+      <tr><td><code>ministral-8b-latest</code></td><td>Small, edge-optimized</td></tr>
+      <tr><td><code>codestral-latest</code></td><td>Optimized for code completion</td></tr>
+      <tr><td><code>devstral-latest</code></td><td>Optimized for code agents</td></tr>
+    </table>
+
+    <h2>Provider Examples</h2>
+
+    <h3>OpenAI</h3>
+<pre><code><span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">'https://api.openai.com/v1/chat/completions'</span>, {
+  method: <span class="string">'POST'</span>,
+  headers: { <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span> },
+  body: JSON.<span class="function">stringify</span>({
+    model: <span class="string">'gpt-5-mini'</span>,
+    messages: [{ role: <span class="string">'user'</span>, content: <span class="string">'Hello!'</span> }]
+  })
+});
+<span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
+console.<span class="function">log</span>(data.choices[0].message.content);</code></pre>
+
+    <h3>Anthropic Claude</h3>
+<pre><code><span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">'https://api.anthropic.com/v1/messages'</span>, {
+  method: <span class="string">'POST'</span>,
+  headers: {
+    <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>,
+    <span class="string">'anthropic-version'</span>: <span class="string">'2023-06-01'</span>
+  },
+  body: JSON.<span class="function">stringify</span>({
+    model: <span class="string">'claude-haiku-4-5'</span>,
+    max_tokens: 1024,
+    messages: [{ role: <span class="string">'user'</span>, content: <span class="string">'Hello!'</span> }]
+  })
+});
+<span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
+console.<span class="function">log</span>(data.content[0].text);</code></pre>
+
+    <h3>Google Gemini</h3>
+<pre><code><span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(
+  <span class="string">'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'</span>,
+  {
+    method: <span class="string">'POST'</span>,
+    headers: { <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span> },
+    body: JSON.<span class="function">stringify</span>({
+      contents: [{ parts: [{ text: <span class="string">'Hello!'</span> }] }]
+    })
+  }
+);
+<span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
+console.<span class="function">log</span>(data.candidates[0].content.parts[0].text);</code></pre>
+
+    <h3>Mistral</h3>
+<pre><code><span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">'https://api.mistral.ai/v1/chat/completions'</span>, {
+  method: <span class="string">'POST'</span>,
+  headers: { <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span> },
+  body: JSON.<span class="function">stringify</span>({
+    model: <span class="string">'mistral-small-latest'</span>,
+    messages: [{ role: <span class="string">'user'</span>, content: <span class="string">'Hello!'</span> }]
+  })
+});
+<span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
+console.<span class="function">log</span>(data.choices[0].message.content);</code></pre>
+
+    <h2>API Reference</h2>
+
+    <h3>window.franzai.ping()</h3>
+    <p>Check if the extension is installed and ready.</p>
+<pre><code><span class="keyword">const</span> { ok, version } = <span class="keyword">await</span> window.franzai.<span class="function">ping</span>();
+<span class="comment">// ok: true if extension is ready</span>
+<span class="comment">// version: string like "2.0.28"</span></code></pre>
+
+    <h3>window.franzai.fetch(url, options)</h3>
+    <p>Explicit bridge call. Same as regular fetch() but always routes through the extension.</p>
+<pre><code><span class="keyword">const</span> response = <span class="keyword">await</span> window.franzai.<span class="function">fetch</span>(
+  <span class="string">'https://api.openai.com/v1/chat/completions'</span>,
+  { method: <span class="string">'POST'</span>, body: <span class="string">'...'</span> }
+);</code></pre>
+
+    <h3>window.franzai.setMode(mode)</h3>
+    <p>Control when the bridge intercepts requests.</p>
+    <table>
+      <tr><th>Mode</th><th>Behavior</th></tr>
+      <tr><td><code>'auto'</code></td><td>Only intercept cross-origin requests (default)</td></tr>
+      <tr><td><code>'always'</code></td><td>Route ALL requests through bridge</td></tr>
+      <tr><td><code>'off'</code></td><td>Disable bridge, use native fetch</td></tr>
+    </table>
+<pre><code>window.franzai.<span class="function">setMode</span>(<span class="string">'always'</span>);</code></pre>
+
+    <h3>window.franzai.getMode()</h3>
+    <p>Get current bridge mode.</p>
+<pre><code><span class="keyword">const</span> mode = window.franzai.<span class="function">getMode</span>(); <span class="comment">// 'auto' | 'always' | 'off'</span></code></pre>
+
+    <h2>Configuration</h2>
+
+    <h3>ENV Variables (API Keys)</h3>
+    <p>Add API keys in the extension's Settings panel. Each key has three properties:</p>
+    <table>
+      <tr><th>Property</th><th>Description</th></tr>
+      <tr><td><code>Name</code></td><td>Variable name (e.g., <code>OPENAI_API_KEY</code>)</td></tr>
+      <tr><td><code>Target</code></td><td>Domain where key is sent (e.g., <code>api.openai.com</code>)</td></tr>
+      <tr><td><code>Value</code></td><td>Your actual API key</td></tr>
+    </table>
+
+    <p><strong>Built-in keys</strong> (auto-configured targets):</p>
+    <ul>
+      <li><code>OPENAI_API_KEY</code> → api.openai.com</li>
+      <li><code>ANTHROPIC_API_KEY</code> → api.anthropic.com</li>
+      <li><code>GOOGLE_API_KEY</code> → generativelanguage.googleapis.com</li>
+      <li><code>MISTRAL_API_KEY</code> → api.mistral.ai</li>
+    </ul>
+
+    <div class="note">
+      <strong>Security:</strong> Keys are target-restricted. A key for <code>api.openai.com</code> will ONLY be sent to that domain - never to other sites.
+    </div>
+
+    <h2>Complete Example: Multi-Provider Chat</h2>
+    <p>A full working example you can copy and use:</p>
+
+<pre><code><span class="comment">// Multi-provider AI chat function</span>
+<span class="keyword">async function</span> <span class="function">chat</span>(provider, message) {
+  <span class="keyword">const</span> configs = {
+    openai: {
+      url: <span class="string">'https://api.openai.com/v1/chat/completions'</span>,
+      body: { model: <span class="string">'gpt-5-mini'</span>, messages: [{ role: <span class="string">'user'</span>, content: message }] },
+      extract: data =&gt; data.choices[0].message.content
+    },
+    anthropic: {
+      url: <span class="string">'https://api.anthropic.com/v1/messages'</span>,
+      headers: { <span class="string">'anthropic-version'</span>: <span class="string">'2023-06-01'</span> },
+      body: { model: <span class="string">'claude-haiku-4-5'</span>, max_tokens: 1024, messages: [{ role: <span class="string">'user'</span>, content: message }] },
+      extract: data =&gt; data.content[0].text
+    },
+    gemini: {
+      url: <span class="string">'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'</span>,
+      body: { contents: [{ parts: [{ text: message }] }] },
+      extract: data =&gt; data.candidates[0].content.parts[0].text
+    },
+    mistral: {
+      url: <span class="string">'https://api.mistral.ai/v1/chat/completions'</span>,
+      body: { model: <span class="string">'mistral-small-latest'</span>, messages: [{ role: <span class="string">'user'</span>, content: message }] },
+      extract: data =&gt; data.choices[0].message.content
+    }
+  };
+
+  <span class="keyword">const</span> config = configs[provider];
+  <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(config.url, {
+    method: <span class="string">'POST'</span>,
+    headers: { <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>, ...config.headers },
+    body: JSON.<span class="function">stringify</span>(config.body)
+  });
+
+  <span class="keyword">if</span> (!response.ok) <span class="keyword">throw new</span> Error(<span class="string">`API error: ${response.status}`</span>);
+  <span class="keyword">return</span> config.<span class="function">extract</span>(<span class="keyword">await</span> response.<span class="function">json</span>());
+}
+
+<span class="comment">// Usage</span>
+<span class="keyword">const</span> reply = <span class="keyword">await</span> <span class="function">chat</span>(<span class="string">'openai'</span>, <span class="string">'What is 2+2?'</span>);
+console.<span class="function">log</span>(reply);</code></pre>
+
+    <h2>Error Handling</h2>
+<pre><code><span class="keyword">async function</span> <span class="function">safeChat</span>(message) {
+  <span class="comment">// Check extension first</span>
+  <span class="keyword">if</span> (!window.franzai) {
+    <span class="keyword">throw new</span> Error(<span class="string">'FranzAI Bridge extension not installed'</span>);
+  }
+
+  <span class="keyword">try</span> {
+    <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">'https://api.openai.com/v1/chat/completions'</span>, {
+      method: <span class="string">'POST'</span>,
+      headers: { <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span> },
+      body: JSON.<span class="function">stringify</span>({
+        model: <span class="string">'gpt-5-mini'</span>,
+        messages: [{ role: <span class="string">'user'</span>, content: message }]
+      })
+    });
+
+    <span class="keyword">if</span> (!response.ok) {
+      <span class="keyword">const</span> error = <span class="keyword">await</span> response.<span class="function">json</span>();
+      <span class="keyword">throw new</span> Error(error.error?.message || <span class="string">`HTTP ${response.status}`</span>);
+    }
+
+    <span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
+    <span class="keyword">return</span> data.choices[0].message.content;
+  } <span class="keyword">catch</span> (err) {
+    console.<span class="function">error</span>(<span class="string">'Chat failed:'</span>, err.message);
+    <span class="keyword">throw</span> err;
+  }
+}</code></pre>
+
+    <h2>Troubleshooting</h2>
+    <table>
+      <tr><th>Problem</th><th>Solution</th></tr>
+      <tr><td>Extension not detected</td><td>Reload page, check extension is enabled in chrome://extensions</td></tr>
+      <tr><td>API key not working</td><td>Check key name matches exactly (e.g., <code>OPENAI_API_KEY</code>)</td></tr>
+      <tr><td>"Page origin not allowed"</td><td>Add your page URL to Allowed Origins in Settings</td></tr>
+      <tr><td>"Destination not allowed"</td><td>Add the API domain to Allowed Destinations in Settings</td></tr>
+      <tr><td>401 Unauthorized</td><td>API key is invalid or expired</td></tr>
+      <tr><td>429 Rate Limited</td><td>Too many requests, wait and retry</td></tr>
+    </table>
+
+    <h2>Limitations</h2>
+    <ul>
+      <li><strong>No streaming</strong> - Responses are fully buffered (5 MB limit)</li>
+      <li><strong>No WebSocket</strong> - HTTP fetch only</li>
+      <li><strong>Chrome 111+</strong> - Uses <code>world: "MAIN"</code> for race-condition-free hook installation</li>
+      <li><strong>Latency</strong> - Extension messaging adds ~5-50ms</li>
+    </ul>
+
+    <h2>Architecture</h2>
+    <p>The extension uses Chrome's <code>world: "MAIN"</code> content script injection to guarantee the fetch hook is installed <strong>before any page script runs</strong>. This eliminates race conditions entirely.</p>
+<pre><code><span class="comment">// Chrome injects this SYNCHRONOUSLY at document_start</span>
+<span class="comment">// before any &lt;script&gt; tags in the page execute</span>
+
+<span class="comment">// 1. MAIN world: hooks window.fetch (same context as page)</span>
+<span class="comment">// 2. ISOLATED world: relays messages to background</span>
+<span class="comment">// 3. Background: makes actual fetch (no CORS), injects API keys</span>
+
+<span class="comment">// The hook is protected with Object.defineProperty</span>
+<span class="comment">// - configurable: false (cannot be deleted)</span>
+<span class="comment">// - writable: false (cannot be overwritten)</span></code></pre>
+  </div>
+
+  <textarea id="markdown-content" aria-hidden="true">
+# FranzAI Bridge Documentation
+
+Complete reference for building browser AI apps. No backend needed.
+
+## What is FranzAI Bridge?
+
+FranzAI Bridge is a Chrome extension that lets you call AI APIs (OpenAI, Anthropic, Google, Mistral) directly from any webpage. It solves two problems:
+
+- **CORS** - Browsers block cross-origin API calls. The extension bypasses this.
+- **API Keys** - Keys are stored securely in the extension, never exposed to page JavaScript.
+
+### Requirements
+
+- **Chrome 111+** - Uses `world: "MAIN"` for guaranteed synchronous hook installation
+
+## Quick Start
+
+### 1. Check if extension is installed
+
+```javascript
+const bridge = window.franzai;
+if (bridge) {
+  const { ok, version } = await bridge.ping();
+  console.log('Bridge ready:', version);
+} else {
+  console.log('Extension not installed');
+}
+```
+
+### 2. Make an API call
+
+```javascript
+// Just use fetch() - the extension handles everything
+const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    model: 'gpt-5-mini',
+    messages: [{ role: 'user', content: 'Hello!' }]
+  })
+});
+
+const data = await response.json();
+console.log(data.choices[0].message.content);
+```
+
+**That's it!** The extension automatically injects your API key. No backend server needed.
+
+## Available Models (Verified January 2026)
+
+### OpenAI Models
+| Model | Description |
+|-------|-------------|
+| `gpt-5.2` | Newest, best for complex tasks and coding |
+| `gpt-5-mini` | Faster, cost-efficient |
+| `gpt-5-nano` | Fastest, most affordable |
+| `gpt-5.1-codex-mini` | Optimized for code generation |
+
+### Anthropic Claude Models
+| Model | Description |
+|-------|-------------|
+| `claude-opus-4-5` | Most capable, best for complex tasks |
+| `claude-sonnet-4-5` | Balanced performance and cost |
+| `claude-haiku-4-5` | Fastest, most affordable |
+
+*Use the aliases above (they point to the latest dated version in each family).*
+
+### Google Gemini Models
+| Model | Description |
+|-------|-------------|
+| `gemini-3-pro-preview` | Latest, most capable (preview) |
+| `gemini-3-flash-preview` | Fast next-gen model (preview) |
+| `gemini-2.5-pro` | High capability (stable) |
+| `gemini-2.5-flash` | Fast and efficient (stable) |
+| `gemini-2.5-flash-lite` | Lightweight, fastest (stable) |
+
+### Mistral Models
+| Model | Description |
+|-------|-------------|
+| `mistral-large-latest` | Flagship model (Mistral Large 3) |
+| `mistral-medium-latest` | Balanced (Mistral Medium 3.1) |
+| `mistral-small-latest` | Fast and efficient (Mistral Small 3.2) |
+| `ministral-8b-latest` | Small, edge-optimized |
+| `codestral-latest` | Optimized for code completion |
+| `devstral-latest` | Optimized for code agents |
+
+## Provider Examples
+
+### OpenAI
+
+```javascript
+const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    model: 'gpt-5-mini',
+    messages: [{ role: 'user', content: 'Hello!' }]
+  })
+});
+const data = await response.json();
+console.log(data.choices[0].message.content);
+```
+
+### Anthropic Claude
+
+```javascript
+const response = await fetch('https://api.anthropic.com/v1/messages', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'anthropic-version': '2023-06-01'
+  },
+  body: JSON.stringify({
+    model: 'claude-haiku-4-5',
+    max_tokens: 1024,
+    messages: [{ role: 'user', content: 'Hello!' }]
+  })
+});
+const data = await response.json();
+console.log(data.content[0].text);
+```
+
+### Google Gemini
+
+```javascript
+const response = await fetch(
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+  {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: 'Hello!' }] }]
+    })
+  }
+);
+const data = await response.json();
+console.log(data.candidates[0].content.parts[0].text);
+```
+
+### Mistral
+
+```javascript
+const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    model: 'mistral-small-latest',
+    messages: [{ role: 'user', content: 'Hello!' }]
+  })
+});
+const data = await response.json();
+console.log(data.choices[0].message.content);
+```
+
+## API Reference
+
+### window.franzai.ping()
+
+Check if the extension is installed and ready.
+
+```javascript
+const { ok, version } = await window.franzai.ping();
+// ok: true if extension is ready
+// version: string like "2.0.28"
+```
+
+### window.franzai.fetch(url, options)
+
+Explicit bridge call. Same as regular fetch() but always routes through the extension.
+
+```javascript
+const response = await window.franzai.fetch(
+  'https://api.openai.com/v1/chat/completions',
+  { method: 'POST', body: '...' }
+);
+```
+
+### window.franzai.setMode(mode)
+
+Control when the bridge intercepts requests.
+
+| Mode | Behavior |
+|------|----------|
+| `'auto'` | Only intercept cross-origin requests (default) |
+| `'always'` | Route ALL requests through bridge |
+| `'off'` | Disable bridge, use native fetch |
+
+```javascript
+window.franzai.setMode('always');
+```
+
+### window.franzai.getMode()
+
+Get current bridge mode.
+
+```javascript
+const mode = window.franzai.getMode(); // 'auto' | 'always' | 'off'
+```
+
+## Configuration
+
+### ENV Variables (API Keys)
+
+Add API keys in the extension's Settings panel. Each key has three properties:
+
+| Property | Description |
+|----------|-------------|
+| `Name` | Variable name (e.g., `OPENAI_API_KEY`) |
+| `Target` | Domain where key is sent (e.g., `api.openai.com`) |
+| `Value` | Your actual API key |
+
+**Built-in keys** (auto-configured targets):
+- `OPENAI_API_KEY` → api.openai.com
+- `ANTHROPIC_API_KEY` → api.anthropic.com
+- `GOOGLE_API_KEY` → generativelanguage.googleapis.com
+- `MISTRAL_API_KEY` → api.mistral.ai
+
+**Security:** Keys are target-restricted. A key for `api.openai.com` will ONLY be sent to that domain - never to other sites.
+
+## Complete Example: Multi-Provider Chat
+
+A full working example you can copy and use:
+
+```javascript
+// Multi-provider AI chat function
+async function chat(provider, message) {
+  const configs = {
+    openai: {
+      url: 'https://api.openai.com/v1/chat/completions',
+      body: { model: 'gpt-5-mini', messages: [{ role: 'user', content: message }] },
+      extract: data => data.choices[0].message.content
+    },
+    anthropic: {
+      url: 'https://api.anthropic.com/v1/messages',
+      headers: { 'anthropic-version': '2023-06-01' },
+      body: { model: 'claude-haiku-4-5', max_tokens: 1024, messages: [{ role: 'user', content: message }] },
+      extract: data => data.content[0].text
+    },
+    gemini: {
+      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+      body: { contents: [{ parts: [{ text: message }] }] },
+      extract: data => data.candidates[0].content.parts[0].text
+    },
+    mistral: {
+      url: 'https://api.mistral.ai/v1/chat/completions',
+      body: { model: 'mistral-small-latest', messages: [{ role: 'user', content: message }] },
+      extract: data => data.choices[0].message.content
+    }
+  };
+
+  const config = configs[provider];
+  const response = await fetch(config.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...config.headers },
+    body: JSON.stringify(config.body)
+  });
+
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  return config.extract(await response.json());
+}
+
+// Usage
+const reply = await chat('openai', 'What is 2+2?');
+console.log(reply);
+```
+
+## Error Handling
+
+```javascript
+async function safeChat(message) {
+  // Check extension first
+  if (!window.franzai) {
+    throw new Error('FranzAI Bridge extension not installed');
+  }
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-5-mini',
+        messages: [{ role: 'user', content: message }]
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } catch (err) {
+    console.error('Chat failed:', err.message);
+    throw err;
+  }
+}
+```
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| Extension not detected | Reload page, check extension is enabled in chrome://extensions |
+| API key not working | Check key name matches exactly (e.g., `OPENAI_API_KEY`) |
+| "Page origin not allowed" | Add your page URL to Allowed Origins in Settings |
+| "Destination not allowed" | Add the API domain to Allowed Destinations in Settings |
+| 401 Unauthorized | API key is invalid or expired |
+| 429 Rate Limited | Too many requests, wait and retry |
+
+## Limitations
+
+- **No streaming** - Responses are fully buffered (5 MB limit)
+- **No WebSocket** - HTTP fetch only
+- **Chrome 111+** - Uses `world: "MAIN"` for race-condition-free hook installation
+- **Latency** - Extension messaging adds ~5-50ms
+
+## Architecture
+
+The extension uses Chrome's `world: "MAIN"` content script injection to guarantee the fetch hook is installed **before any page script runs**. This eliminates race conditions entirely.
+
+```
+// Chrome injects this SYNCHRONOUSLY at document_start
+// before any <script> tags in the page execute
+
+// 1. MAIN world: hooks window.fetch (same context as page)
+// 2. ISOLATED world: relays messages to background
+// 3. Background: makes actual fetch (no CORS), injects API keys
+
+// The hook is protected with Object.defineProperty
+// - configurable: false (cannot be deleted)
+// - writable: false (cannot be overwritten)
+```
+  </textarea>
+
+  <script>
+    document.getElementById('copyBtn').addEventListener('click', function() {
+      var content = document.getElementById('markdown-content').value.trim();
+      var btn = this;
+      var btnText = document.getElementById('copyBtnText');
+
+      navigator.clipboard.writeText(content).then(function() {
+        btn.classList.add('copied');
+        btnText.textContent = 'Copied!';
+        setTimeout(function() {
+          btn.classList.remove('copied');
+          btnText.textContent = 'Copy All as Markdown';
+        }, 2000);
+      });
+    });
+  </script>
+</body>
+</html>

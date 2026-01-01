@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="franzai-bridge" content="enabled">
   <title>FranzAI Bridge - CORS Bypass & API Key Injection for Browser AI Apps</title>
   <meta name="description" content="Make API calls from any webpage. Your API keys stay secure in the Chrome extension. Built-in support for OpenAI, Anthropic, Google Gemini, and Mistral.">
   <meta property="og:title" content="FranzAI Bridge">
@@ -1000,7 +1001,7 @@
   method: <span class="string">"POST"</span>,
   headers: { <span class="string">"Content-Type"</span>: <span class="string">"application/json"</span> },
   body: JSON.stringify({
-    model: <span class="string">"gpt-4"</span>,
+    model: <span class="string">"gpt-5-mini"</span>,
     messages: [{ role: <span class="string">"user"</span>, content: <span class="string">"Hello!"</span> }]
   })
 });
@@ -1140,28 +1141,24 @@ console.<span class="function">log</span>(data.choices[<span class="keyword">0</
         <div class="step-number">6</div>
         <div class="step-content">
           <h4>Add Your API Keys</h4>
-          <p>In the side panel, go to the <strong>Settings</strong> tab and enter your API keys.</p>
+          <p>In the side panel, go to <strong>Settings</strong> and click <strong>"+ Add ENV Variable"</strong>.</p>
           <div class="api-keys-preview">
             <div class="api-key-row">
-              <span class="api-label">OpenAI</span>
-              <span class="api-input">sk-proj-••••••••••••</span>
+              <span class="api-label" style="width: 80px;">Name</span>
+              <span class="api-input" style="flex: 1;">OPENAI_API_KEY</span>
             </div>
             <div class="api-key-row">
-              <span class="api-label">Anthropic</span>
-              <span class="api-input">sk-ant-••••••••••••</span>
+              <span class="api-label" style="width: 80px;">Target</span>
+              <span class="api-input" style="flex: 1; color: var(--accent);">api.openai.com</span>
             </div>
             <div class="api-key-row">
-              <span class="api-label">Google</span>
-              <span class="api-input">AIza••••••••••••</span>
-            </div>
-            <div class="api-key-row">
-              <span class="api-label">Mistral</span>
-              <span class="api-input">••••••••••••••••</span>
+              <span class="api-label" style="width: 80px;">Value</span>
+              <span class="api-input" style="flex: 1;">sk-proj-••••••••••••</span>
             </div>
           </div>
           <div class="step-note">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            Keys are stored locally in Chrome - never sent to our servers.
+            Keys are <strong>target-restricted</strong> - each key only sent to its configured domain. Never exposed to pages or other sites.
           </div>
         </div>
       </div>
@@ -1194,7 +1191,7 @@ console.<span class="function">log</span>(data.choices[<span class="keyword">0</
   <!-- How It Works -->
   <section id="how-it-works">
     <h2>How It Works</h2>
-    <p class="subtitle">The extension intercepts fetch() and routes requests through its background script</p>
+    <p class="subtitle">Chrome 111+ synchronous injection guarantees the hook is installed before any page script runs</p>
     <div class="flow-diagram">
       <div class="flow-row">
         <div class="flow-box page">
@@ -1203,8 +1200,8 @@ console.<span class="function">log</span>(data.choices[<span class="keyword">0</
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-box content">
-          <div class="flow-box-title">Content Script</div>
-          <code>chrome.runtime.sendMessage</code>
+          <div class="flow-box-title">Injected Hook</div>
+          <code>world: "MAIN"</code>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-box background">
@@ -1257,6 +1254,10 @@ console.<span class="function">log</span>(data.choices[<span class="keyword">0</
       <div class="faq-item">
         <h4>Can I use this on file:// URLs?</h4>
         <p>Yes. Enable "Allow access to file URLs" in the extension settings at chrome://extensions.</p>
+      </div>
+      <div class="faq-item">
+        <h4>What Chrome version do I need?</h4>
+        <p>Chrome 111 or later. The extension uses Chrome's <code>world: "MAIN"</code> feature for guaranteed synchronous hook installation - no race conditions possible.</p>
       </div>
     </div>
   </section>

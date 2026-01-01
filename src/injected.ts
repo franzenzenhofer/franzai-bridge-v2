@@ -1,4 +1,15 @@
-import type { FetchEnvelope, FetchInitLite, PageFetchRequest } from "./shared/types";
+/**
+ * FranzAI Bridge - Injected Script (MAIN WORLD)
+ *
+ * This script runs directly in the page's JavaScript context via Chrome's
+ * world: "MAIN" content script injection. It hooks window.fetch and
+ * window.Request to route requests through the extension.
+ *
+ * CRITICAL: This script is injected by Chrome BEFORE any page scripts run,
+ * guaranteeing we can hook fetch before any page code executes.
+ */
+
+import type { BridgeStatus, FetchEnvelope, FetchInitLite, PageFetchRequest } from "./shared/types";
 import {
   BRIDGE_SOURCE,
   BRIDGE_TIMEOUT_MS,
@@ -9,12 +20,66 @@ import { PAGE_MSG } from "./shared/messages";
 import { createLogger } from "./shared/logger";
 import { makeId } from "./shared/ids";
 
+// =============================================================================
+// IMMEDIATE CAPTURE - Must happen before any other code can run
+// =============================================================================
+
+// Check if already installed (prevents double-installation)
+const win = window as Window & {
+  __franzaiBridgeInstalled?: boolean;
+  __franzaiNativeFetch?: typeof fetch;
+  __franzaiNativeRequest?: typeof Request;
+  __franzaiBridgeConfig?: BridgeConfig;
+  franzai?: FranzAIBridge;
+};
+
+// If already installed, skip initialization (prevents double-hooking in iframes)
+const ALREADY_INSTALLED = !!win.__franzaiBridgeInstalled;
+
+// Capture native implementations IMMEDIATELY before anything can modify them
+// Use existing if already installed, otherwise capture fresh
+const NATIVE_FETCH = ALREADY_INSTALLED
+  ? (win.__franzaiNativeFetch as typeof fetch)
+  : window.fetch.bind(window);
+const NATIVE_REQUEST = ALREADY_INSTALLED
+  ? (win.__franzaiNativeRequest as typeof Request)
+  : window.Request;
+
+// Store in protected properties (cannot be overwritten) - only if first install
+if (!ALREADY_INSTALLED) {
+  Object.defineProperties(win, {
+    __franzaiNativeFetch: {
+      value: NATIVE_FETCH,
+      writable: false,
+      configurable: false,
+      enumerable: false
+    },
+    __franzaiNativeRequest: {
+      value: NATIVE_REQUEST,
+      writable: false,
+      configurable: false,
+      enumerable: false
+    },
+    __franzaiBridgeInstalled: {
+      value: true,
+      writable: false,
+      configurable: false,
+      enumerable: false
+    }
+  });
+}
+
+// =============================================================================
+// Types and Configuration
+// =============================================================================
+
 const log = createLogger("page");
 
 type BridgeMode = "auto" | "always" | "off";
 
 type BridgeConfig = {
   mode: BridgeMode;
+  lockHooks?: boolean; // If true, hooks cannot be overwritten by page scripts
 };
 
 type BridgeInit = RequestInit & {
@@ -35,7 +100,91 @@ type FranzAIBridge = {
   ping(): Promise<{ ok: true; version: string }>;
   setMode(mode: BridgeMode): BridgeMode;
   getMode(): BridgeMode;
+  isKeySet(keyName: string): Promise<boolean>;
+  getStatus(): Promise<BridgeStatus>;
 };
+
+// =============================================================================
+// Domain Status Cache
+// =============================================================================
+
+let cachedDomainStatus: BridgeStatus | null = null;
+let domainStatusPromise: Promise<BridgeStatus> | null = null;
+
+function getCachedDomainEnabled(): boolean | null {
+  return cachedDomainStatus?.domainEnabled ?? null;
+}
+
+async function fetchDomainStatus(): Promise<BridgeStatus> {
+  // If already fetching, return existing promise
+  if (domainStatusPromise) return domainStatusPromise;
+
+  domainStatusPromise = new Promise<BridgeStatus>((resolve) => {
+    const statusId = makeId("status");
+    const timeoutId = window.setTimeout(() => {
+      window.removeEventListener("message", onMessage);
+      const fallback: BridgeStatus = {
+        installed: true,
+        version: BRIDGE_VERSION,
+        domainEnabled: false,
+        domainSource: "default",
+        originAllowed: true,
+        hasApiKeys: false,
+        ready: false,
+        reason: "Timeout waiting for status"
+      };
+      cachedDomainStatus = fallback;
+      resolve(fallback);
+    }, 3000);
+
+    const onMessage = (ev: MessageEvent) => {
+      if (ev.source !== window) return;
+      const data = ev.data as { source?: string; type?: string; payload?: { statusId: string; status: BridgeStatus } };
+      if (!data || data.source !== BRIDGE_SOURCE) return;
+      if (data.type !== PAGE_MSG.STATUS_RESPONSE) return;
+      if (data.payload?.statusId !== statusId) return;
+
+      clearTimeout(timeoutId);
+      window.removeEventListener("message", onMessage);
+      cachedDomainStatus = data.payload.status;
+      resolve(data.payload.status);
+    };
+
+    window.addEventListener("message", onMessage);
+
+    window.postMessage(
+      {
+        source: BRIDGE_SOURCE,
+        type: PAGE_MSG.STATUS_REQUEST,
+        payload: { statusId }
+      },
+      "*"
+    );
+  });
+
+  const result = await domainStatusPromise;
+  domainStatusPromise = null; // Allow refresh on next call
+  return result;
+}
+
+// Listen for domain enabled updates from background (via content script)
+window.addEventListener("message", (ev) => {
+  if (ev.source !== window) return;
+  const data = ev.data as { source?: string; type?: string; payload?: { enabled: boolean; source: string } };
+  if (!data || data.source !== BRIDGE_SOURCE) return;
+  if (data.type !== PAGE_MSG.DOMAIN_ENABLED_UPDATE) return;
+
+  log.info("DOMAIN_ENABLED_UPDATE received:", data.payload?.enabled, "cache exists:", !!cachedDomainStatus);
+
+  // Update cache when domain status changes
+  if (cachedDomainStatus) {
+    cachedDomainStatus.domainEnabled = data.payload?.enabled ?? false;
+    cachedDomainStatus.domainSource = (data.payload?.source as "user" | "meta" | "default") ?? "default";
+    log.info("Cache updated, domainEnabled now:", cachedDomainStatus.domainEnabled);
+  } else {
+    log.warn("Cannot update domain status - cache not initialized yet");
+  }
+});
 
 const REQUEST_META = Symbol.for("franzaiBridgeMeta");
 const textEncoder = new TextEncoder();
@@ -46,16 +195,24 @@ function normalizeMode(mode: unknown): BridgeMode | undefined {
 }
 
 function getBridgeConfig(): BridgeConfig {
-  const w = window as unknown as { __franzaiBridgeConfig?: Partial<BridgeConfig> };
-  const existing = w.__franzaiBridgeConfig;
-  const config = existing && typeof existing === "object" ? existing : {};
+  const existing = win.__franzaiBridgeConfig;
+  const config: Partial<BridgeConfig> = existing && typeof existing === "object" ? existing : {};
+
   // Default: "always" - capture ALL requests (including same-origin) for the inspector
   // Users can set "auto" (cross-origin only) or "off" if they want
   const normalized = normalizeMode(config.mode) ?? "always";
 
-  config.mode = normalized;
-  w.__franzaiBridgeConfig = config;
-  return config as BridgeConfig;
+  // Default: lockHooks = true for security (prevents pages from unhooking)
+  // Set lockHooks: false in config if you need to allow overwrites
+  const lockHooks = config.lockHooks !== false;
+
+  const finalConfig: BridgeConfig = {
+    mode: normalized,
+    lockHooks
+  };
+
+  win.__franzaiBridgeConfig = finalConfig;
+  return finalConfig;
 }
 
 const bridgeConfig = getBridgeConfig();
@@ -282,22 +439,9 @@ async function requestToLite(input: RequestInfo | URL, init?: BridgeInit): Promi
   };
 }
 
-const nativeFetch: typeof fetch =
-  ((window as unknown as { franzaiNativeFetch?: typeof fetch }).franzaiNativeFetch as
-    | typeof fetch
-    | undefined) ||
-  window.fetch.bind(window);
-
-(window as unknown as { franzaiNativeFetch?: typeof fetch }).franzaiNativeFetch = nativeFetch;
-
-const nativeRequest: typeof Request =
-  ((window as unknown as { franzaiNativeRequest?: typeof Request }).franzaiNativeRequest as
-    | typeof Request
-    | undefined) ||
-  window.Request;
-
-(window as unknown as { franzaiNativeRequest?: typeof Request }).franzaiNativeRequest =
-  nativeRequest;
+// Use the protected native implementations we captured at startup
+const nativeFetch = NATIVE_FETCH;
+const nativeRequest = NATIVE_REQUEST;
 
 function isCrossOrigin(input: RequestInfo | URL): boolean {
   try {
@@ -329,6 +473,51 @@ const franzai: FranzAIBridge = {
 
   getMode() {
     return bridgeConfig.mode ?? "auto";
+  },
+
+  async isKeySet(keyName: string): Promise<boolean> {
+    if (!keyName || typeof keyName !== "string") return false;
+
+    const checkId = makeId("keycheck");
+
+    return new Promise<boolean>((resolve) => {
+      const timeoutId = window.setTimeout(() => {
+        window.removeEventListener("message", onMessage);
+        resolve(false); // Timeout = assume not set
+      }, 5000);
+
+      const onMessage = (ev: MessageEvent) => {
+        if (ev.source !== window) return;
+        const data = ev.data as { source?: string; type?: string; payload?: { checkId: string; isSet: boolean } };
+        if (!data || data.source !== BRIDGE_SOURCE) return;
+        if (data.type !== PAGE_MSG.KEY_CHECK_RESPONSE) return;
+        if (data.payload?.checkId !== checkId) return;
+
+        clearTimeout(timeoutId);
+        window.removeEventListener("message", onMessage);
+        resolve(data.payload.isSet);
+      };
+
+      window.addEventListener("message", onMessage);
+
+      window.postMessage(
+        {
+          source: BRIDGE_SOURCE,
+          type: PAGE_MSG.KEY_CHECK_REQUEST,
+          payload: { checkId, keyName }
+        },
+        "*"
+      );
+    });
+  },
+
+  async getStatus(): Promise<BridgeStatus> {
+    // Return cached status if available and fresh
+    if (cachedDomainStatus) {
+      return cachedDomainStatus;
+    }
+    // Fetch fresh status from background
+    return fetchDomainStatus();
   },
 
   async fetch(input: RequestInfo | URL, init?: BridgeInit): Promise<Response> {
@@ -432,6 +621,22 @@ async function hookedFetch(input: RequestInfo | URL, init?: BridgeInit): Promise
     return nativeFetch(input as RequestInfo, init as RequestInit | undefined);
   }
 
+  // Check if domain is enabled (use cached value if available for performance)
+  const cachedEnabled = getCachedDomainEnabled();
+  log.info("hookedFetch check - cachedEnabled:", cachedEnabled);
+  if (cachedEnabled === false) {
+    // Domain is explicitly disabled - bypass bridge entirely
+    log.info("Domain disabled, using nativeFetch");
+    return nativeFetch(input as RequestInfo, init as RequestInit | undefined);
+  }
+
+  // If no cached status yet, fetch it asynchronously but don't block first request
+  // The first request goes through bridge (if extension enabled it), subsequent ones use cache
+  if (cachedEnabled === null) {
+    // Start fetching status in background (don't await)
+    fetchDomainStatus().catch(() => { /* ignore errors */ });
+  }
+
   try {
     return await franzai.fetch(input, init);
   } catch (e) {
@@ -477,25 +682,39 @@ function installRequestHook() {
   }
 }
 
-(window as unknown as { franzai?: FranzAIBridge }).franzai = franzai;
+// =============================================================================
+// PROTECTED HOOK INSTALLATION (only on first install)
+// =============================================================================
 
-(() => {
-  const w = window as unknown as { __franzaiFetchHookInstalled?: boolean };
-  if (w.__franzaiFetchHookInstalled) return;
+if (!ALREADY_INSTALLED) {
+  // Expose the franzai API (protected)
+  Object.defineProperty(win, "franzai", {
+    value: franzai,
+    writable: false,
+    configurable: false,
+    enumerable: true
+  });
 
-  w.__franzaiFetchHookInstalled = true;
+  // Install Request hook
   installRequestHook();
 
+  // Install fetch hook with protection based on config
+  const hookDescriptor: PropertyDescriptor = {
+    value: hookedFetch,
+    enumerable: true,
+    // If lockHooks is true, prevent pages from overwriting our hook
+    writable: !bridgeConfig.lockHooks,
+    configurable: !bridgeConfig.lockHooks
+  };
+
   try {
-    Object.defineProperty(window, "fetch", {
-      configurable: true,
-      writable: true,
-      value: hookedFetch
-    });
+    Object.defineProperty(window, "fetch", hookDescriptor);
   } catch {
+    // Fallback if defineProperty fails (shouldn't happen)
     window.fetch = hookedFetch as typeof fetch;
   }
 
+  // Notify that bridge is ready
   window.postMessage(
     {
       source: BRIDGE_SOURCE,
@@ -505,5 +724,32 @@ function installRequestHook() {
     "*"
   );
 
-  log.info("window.fetch + window.Request are routed through FranzAI Bridge");
-})();
+  log.info("FranzAI Bridge installed", {
+    version: franzai.version,
+    mode: bridgeConfig.mode,
+    locked: bridgeConfig.lockHooks
+  });
+
+  // =============================================================================
+  // VERIFICATION - Confirm hooks are properly installed
+  // =============================================================================
+
+  queueMicrotask(() => {
+    // Verify fetch hook is still in place
+    if (window.fetch !== hookedFetch) {
+      log.error("CRITICAL: fetch hook was overwritten immediately after installation!");
+      // Attempt recovery
+      try {
+        Object.defineProperty(window, "fetch", {
+          value: hookedFetch,
+          writable: false,
+          configurable: false,
+          enumerable: true
+        });
+        log.info("Recovered fetch hook with forced lock");
+      } catch (e) {
+        log.error("Failed to recover fetch hook", e);
+      }
+    }
+  });
+}

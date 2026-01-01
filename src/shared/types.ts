@@ -1,5 +1,24 @@
 export type Dict<T = string> = Record<string, T>;
 
+export type DomainPreference = {
+  enabled: boolean;
+  source: "user" | "meta";  // Who set this preference
+  lastModified: number;     // Timestamp
+};
+
+export type DomainPreferences = Dict<DomainPreference>;
+
+export type BridgeStatus = {
+  installed: boolean;
+  version: string;
+  domainEnabled: boolean;
+  domainSource: "user" | "meta" | "default";
+  originAllowed: boolean;
+  hasApiKeys: boolean;
+  ready: boolean;
+  reason: string;
+};
+
 export type InjectionRule = {
   hostPattern: string;
   injectHeaders?: Dict<string>;

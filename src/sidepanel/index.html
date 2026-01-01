@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <!-- Line 1: Brand + Version | Refresh + Settings -->
+    <!-- Line 1: Brand + Version | Refresh + Docs + Settings -->
     <header class="topbar">
       <div class="brand">
         <span class="title">FranzAI Bridge</span>
@@ -16,12 +16,37 @@
         <button id="btnRefresh" class="icon-btn" title="Refresh (R)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         </button>
+        <a href="https://bridge.franzai.com/docs/" target="_blank" class="settings-btn" title="Documentation">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span>Docs</span>
+        </a>
         <button id="btnSettings" class="settings-btn" title="Settings">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           <span>Settings</span>
         </button>
       </div>
     </header>
+
+    <!-- Line 2: Domain Toggle Bar -->
+    <div class="domain-bar" id="domainToggle">
+      <div class="domain-info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span class="domain-name" id="domainName">—</span>
+        <label class="toggle-with-labels">
+          <span class="toggle-label-off">OFF</span>
+          <input type="checkbox" id="domainEnabled" />
+          <span class="toggle-track"></span>
+          <span class="toggle-label-on">ON</span>
+        </label>
+        <span class="domain-source" id="domainSource"></span>
+      </div>
+      <div class="domain-actions">
+        <button id="btnDomains" class="domain-manage-btn" title="Manage all domains">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Manage
+        </button>
+      </div>
+    </div>
 
     <!-- Line 2: Tab toolbar with contextual actions -->
     <nav class="toolbar" id="toolbar-requests">
@@ -69,6 +94,14 @@
       <span class="toolbar-title">Advanced</span>
     </nav>
 
+    <nav class="toolbar hidden" id="toolbar-domains">
+      <button id="btnBackFromDomains" class="back-btn" title="Back to Requests">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        <span>Back</span>
+      </button>
+      <span class="toolbar-title">Domain Preferences</span>
+    </nav>
+
     <main class="layout">
       <section id="tab-requests" class="tabpage active">
         <div class="table-header" id="tableHeader">
@@ -95,26 +128,16 @@
         <div class="settings">
           <section class="card">
             <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> ENV Vars (stored in extension, never exposed to pages)</h2>
-            <div class="row">
-              <input id="envName" placeholder="NAME (e.g. OPENAI_API_KEY)" />
-              <input id="envValue" placeholder="VALUE" type="password" />
-              <button id="btnAddEnv">Add</button>
-            </div>
-            <div id="envTable" class="table"></div>
-            <div class="note">Tip: You can add any ENV vars, not only the built-ins.</div>
+            <div id="envTable"></div>
+            <button id="btnAddEnv" class="add-env-btn">+ Add ENV Variable</button>
           </section>
 
           <section class="card">
-            <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Allowed Page Origins (who can call franzai.fetch)</h2>
-            <div class="row">
-              <input id="originValue" placeholder="e.g. https://bridge.franzai.com or http://localhost:*" />
-              <button id="btnAddOrigin">Add</button>
+            <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Allowed Destinations</h2>
+            <div class="note" style="margin-bottom: 8px; padding: 8px; background: rgba(24,128,56,0.08); border-radius: 4px;">
+              <strong>Security filter:</strong> Which APIs can the bridge FORWARD requests to.<br>
+              <span style="color: var(--muted);">Controls outgoing requests. Use * to allow all destinations.</span>
             </div>
-            <div id="originsTable" class="table"></div>
-          </section>
-
-          <section class="card">
-            <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Allowed Destinations (where requests may go)</h2>
             <div class="row">
               <input id="destValue" placeholder="e.g. api.openai.com or https://api.mistral.ai/*" />
               <button id="btnAddDest">Add</button>
@@ -212,6 +235,21 @@
             </div>
 
             <div id="rulesTable" class="table"></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- Domains tab (manage per-domain bridge enable/disable) -->
+      <section id="tab-domains" class="tabpage">
+        <div class="settings">
+          <section class="card">
+            <h2><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Per-Domain Settings</h2>
+            <div class="domains-explanation">
+              <p>FranzAI Bridge is <strong>disabled by default</strong> on all domains for security.</p>
+              <p>Pages can opt-in via meta tag: <code>&lt;meta name="franzai-bridge" content="enabled"&gt;</code></p>
+              <p>Your explicit settings always override meta tags.</p>
+            </div>
+            <div id="domainsTable" class="domains-list"></div>
           </section>
         </div>
       </section>

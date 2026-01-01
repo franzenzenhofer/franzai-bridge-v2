@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="franzai-bridge" content="enabled">
   <title>FranzAI Bridge Demo - Live API Testing</title>
   <meta name="description" content="Test AI API calls with FranzAI Bridge. Requires the Chrome extension.">
   <link rel="icon" href="/favicon.ico">
@@ -128,7 +129,7 @@
 
     .table-header {
       display: grid;
-      grid-template-columns: 60px 50px 1fr 50px 50px;
+      grid-template-columns: 55px 55px 130px 1fr 45px 45px;
       background: var(--panel);
       border-bottom: 1px solid var(--border);
       font-size: 10px;
@@ -143,7 +144,7 @@
 
     .log-item {
       display: grid;
-      grid-template-columns: 60px 50px 1fr 50px 50px;
+      grid-template-columns: 55px 55px 130px 1fr 45px 45px;
       border-bottom: 1px solid var(--border);
       cursor: pointer;
       font-family: var(--font-mono);
@@ -154,12 +155,20 @@
     .log-item > div { padding: 5px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .log-item .method { font-weight: 600; font-size: 10px; }
     .log-item .method.POST { color: var(--method-post); }
+    .log-item .method.GET { color: var(--method-get); }
     .log-item .status.success { color: var(--success); }
     .log-item .status.error { color: var(--error); }
     .log-item .time { color: var(--muted); font-size: 10px; }
+    .log-item .domain { color: var(--accent); font-size: 10px; }
+    .log-item .path { color: var(--text); font-size: 10px; }
     .log-item .elapsed { color: var(--muted); text-align: right; }
 
     .detail-panel { flex: 1; overflow: auto; font-family: var(--font-mono); font-size: 11px; }
+    .detail-toolbar { display: flex; gap: 8px; padding: 8px; background: var(--panel); border-bottom: 1px solid var(--border); }
+    .copy-btn { padding: 4px 10px; font-size: 11px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); cursor: pointer; font-family: inherit; }
+    .copy-btn:hover { background: var(--panel-lighter); border-color: var(--muted); }
+    .copy-btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+    .copy-btn.primary:hover { background: #1557b0; }
     .detail-section { border-bottom: 1px solid var(--border); }
     .section-header { padding: 8px; background: var(--panel); }
     .section-title { font-weight: 600; font-size: 11px; color: var(--text); text-transform: uppercase; }
@@ -298,14 +307,20 @@
       const providerSelect = document.createElement('select');
       providerSelect.id = 'provider';
       [
-        ['openai', 'OpenAI (gpt-4o-mini)'],
-        ['anthropic', 'Anthropic (claude-sonnet-4)'],
-        ['gemini', 'Google Gemini (gemini-2.0-flash-lite)'],
-        ['mistral', 'Mistral (mistral-small-latest)']
+        ['openai', 'OpenAI (GPT-5.1 Codex Mini)'],
+        ['anthropic', 'Anthropic (Claude Haiku 4.5)'],
+        ['gemini', 'Google Gemini (2.5 Flash Lite)'],
+        ['mistral', 'Mistral (Small 3.1 24B)'],
+        ['---', '── CORS Bypass Tests ──'],
+        ['hackernews', 'Hacker News API'],
+        ['github', 'GitHub API'],
+        ['jsonplaceholder', 'JSONPlaceholder API'],
+        ['httpbin', 'HTTPBin (echo test)']
       ].forEach(([value, text]) => {
         const opt = document.createElement('option');
         opt.value = value;
         opt.textContent = text;
+        if (value === '---') opt.disabled = true;
         providerSelect.appendChild(opt);
       });
       providerSection.appendChild(providerLabel);
@@ -343,7 +358,7 @@
 
       const tableHeader = document.createElement('div');
       tableHeader.className = 'table-header';
-      ['Time', 'Method', 'URL', 'Status', 'ms'].forEach(text => {
+      ['Time', 'Method', 'Domain', 'Path', 'Status', 'ms'].forEach(text => {
         const div = document.createElement('div');
         div.textContent = text;
         tableHeader.appendChild(div);
@@ -375,10 +390,16 @@
 
     function getProviderConfig(provider) {
       const configs = {
-        openai: { url: 'https://api.openai.com/v1/chat/completions', body: (p) => ({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: p }] }) },
-        anthropic: { url: 'https://api.anthropic.com/v1/messages', headers: { 'anthropic-version': '2023-06-01' }, body: (p) => ({ model: 'claude-sonnet-4-20250514', max_tokens: 1024, messages: [{ role: 'user', content: p }] }) },
-        gemini: { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent', body: (p) => ({ contents: [{ parts: [{ text: p }] }] }) },
-        mistral: { url: 'https://api.mistral.ai/v1/chat/completions', body: (p) => ({ model: 'mistral-small-latest', messages: [{ role: 'user', content: p }] }) }
+        // AI Providers (2025 models)
+        openai: { url: 'https://api.openai.com/v1/chat/completions', body: (p) => ({ model: 'gpt-5.1-codex-mini', messages: [{ role: 'user', content: p }] }) },
+        anthropic: { url: 'https://api.anthropic.com/v1/messages', headers: { 'anthropic-version': '2023-06-01' }, body: (p) => ({ model: 'claude-haiku-4.5-20251015', max_tokens: 1024, messages: [{ role: 'user', content: p }] }) },
+        gemini: { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent', body: (p) => ({ contents: [{ parts: [{ text: p }] }] }) },
+        mistral: { url: 'https://api.mistral.ai/v1/chat/completions', body: (p) => ({ model: 'mistral-small-3.1-24b-instruct', messages: [{ role: 'user', content: p }] }) },
+        // CORS Bypass Tests (no API key needed)
+        hackernews: { method: 'GET', url: 'https://hacker-news.firebaseio.com/v0/topstories.json?print=pretty', noBody: true },
+        github: { method: 'GET', url: 'https://api.github.com/repos/anthropics/claude-code/commits?per_page=5', noBody: true },
+        jsonplaceholder: { method: 'GET', url: 'https://jsonplaceholder.typicode.com/posts/1', noBody: true },
+        httpbin: { method: 'POST', url: 'https://httpbin.org/post', body: (p) => ({ prompt: p, timestamp: new Date().toISOString(), source: 'FranzAI Bridge Demo' }) }
       };
       return configs[provider];
     }
@@ -390,19 +411,26 @@
       const prompt = document.getElementById('prompt').value.trim();
       const sendBtn = document.getElementById('sendBtn');
 
-      if (!prompt) { alert('Please enter a prompt'); return; }
+      if (provider === '---') return;
 
       const config = getProviderConfig(provider);
+      const method = config.method || 'POST';
+      const isGetRequest = method === 'GET' || config.noBody;
+
+      if (!isGetRequest && !prompt) { alert('Please enter a prompt'); return; }
+
       const startTime = Date.now();
+      const requestBody = isGetRequest ? null : config.body(prompt);
+      const requestHeaders = isGetRequest ? {} : { 'Content-Type': 'application/json', ...(config.headers || {}) };
 
       const logEntry = {
         id: Date.now(),
         time: new Date().toLocaleTimeString(),
-        method: 'POST',
+        method: method,
         url: config.url,
         status: null,
         elapsed: null,
-        request: { headers: { 'Content-Type': 'application/json', ...(config.headers || {}) }, body: config.body(prompt) },
+        request: { headers: requestHeaders, body: requestBody },
         response: null,
         error: null
       };
@@ -415,11 +443,13 @@
       sendBtn.textContent = 'Sending...';
 
       try {
-        const response = await fetch(config.url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(config.headers || {}) },
-          body: JSON.stringify(config.body(prompt))
-        });
+        const fetchOptions = { method };
+        if (!isGetRequest) {
+          fetchOptions.headers = requestHeaders;
+          fetchOptions.body = JSON.stringify(requestBody);
+        }
+
+        const response = await fetch(config.url, fetchOptions);
 
         logEntry.elapsed = Date.now() - startTime;
         logEntry.status = response.status;
@@ -462,9 +492,14 @@
         methodDiv.className = 'method ' + log.method;
         methodDiv.textContent = log.method;
 
-        const urlDiv = document.createElement('div');
-        urlDiv.className = 'url';
-        urlDiv.textContent = new URL(log.url).pathname;
+        const parsedUrl = new URL(log.url);
+        const domainDiv = document.createElement('div');
+        domainDiv.className = 'domain';
+        domainDiv.textContent = parsedUrl.hostname;
+
+        const pathDiv = document.createElement('div');
+        pathDiv.className = 'path';
+        pathDiv.textContent = parsedUrl.pathname;
 
         const statusDiv = document.createElement('div');
         statusDiv.className = 'status ' + (log.status >= 200 && log.status < 300 ? 'success' : 'error');
@@ -476,7 +511,8 @@
 
         item.appendChild(timeDiv);
         item.appendChild(methodDiv);
-        item.appendChild(urlDiv);
+        item.appendChild(domainDiv);
+        item.appendChild(pathDiv);
         item.appendChild(statusDiv);
         item.appendChild(elapsedDiv);
         logList.appendChild(item);
@@ -501,6 +537,29 @@
         detailPanel.appendChild(hint);
         return;
       }
+
+      // Toolbar with Copy buttons
+      const toolbar = document.createElement('div');
+      toolbar.className = 'detail-toolbar';
+
+      const copyUrlBtn = document.createElement('button');
+      copyUrlBtn.className = 'copy-btn';
+      copyUrlBtn.textContent = 'Copy URL';
+      copyUrlBtn.onclick = () => { navigator.clipboard.writeText(log.url); copyUrlBtn.textContent = 'Copied!'; setTimeout(() => copyUrlBtn.textContent = 'Copy URL', 1500); };
+
+      const copyAllBtn = document.createElement('button');
+      copyAllBtn.className = 'copy-btn primary';
+      copyAllBtn.textContent = 'Copy All';
+      copyAllBtn.onclick = () => {
+        const allData = { url: log.url, method: log.method, request: log.request, response: log.response, error: log.error, elapsed: log.elapsed };
+        navigator.clipboard.writeText(JSON.stringify(allData, null, 2));
+        copyAllBtn.textContent = 'Copied!';
+        setTimeout(() => copyAllBtn.textContent = 'Copy All', 1500);
+      };
+
+      toolbar.appendChild(copyUrlBtn);
+      toolbar.appendChild(copyAllBtn);
+      detailPanel.appendChild(toolbar);
 
       // Request section
       const reqSection = document.createElement('div');

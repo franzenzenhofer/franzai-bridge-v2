@@ -1,4 +1,4 @@
-import type { BridgeSettings, LogEntry, Dict } from "./types";
+import type { BridgeSettings, LogEntry, Dict, DomainPreference, DomainPreferences } from "./types";
 import { normalizeSettings } from "./normalize";
 import { DEFAULT_SETTINGS, SETTINGS_VERSION } from "./defaults";
 import { createLogger } from "./logger";
@@ -7,6 +7,7 @@ const log = createLogger("storage");
 
 const SETTINGS_KEY = "franzaiSettings";
 const LOGS_KEY = "franzaiLogs";
+const DOMAIN_PREFS_KEY = "franzaiDomainPrefs";
 
 function sessionStorageOrLocal(): chrome.storage.StorageArea {
   const anyChrome = chrome as unknown as { storage?: { session?: chrome.storage.StorageArea } };
@@ -80,4 +81,51 @@ export async function appendLog(entry: LogEntry, maxLogs: number): Promise<void>
 export async function clearLogs(): Promise<void> {
   const store = sessionStorageOrLocal();
   await store.remove(LOGS_KEY);
+}
+
+// =============================================================================
+// Domain Preferences Storage
+// =============================================================================
+
+export async function getDomainPreferences(): Promise<DomainPreferences> {
+  const data = await chrome.storage.local.get(DOMAIN_PREFS_KEY);
+  return (data[DOMAIN_PREFS_KEY] as DomainPreferences) ?? {};
+}
+
+export async function setDomainPreferences(prefs: DomainPreferences): Promise<void> {
+  await chrome.storage.local.set({ [DOMAIN_PREFS_KEY]: prefs });
+}
+
+export async function getDomainPreference(domain: string): Promise<DomainPreference | null> {
+  const prefs = await getDomainPreferences();
+  return prefs[domain] ?? null;
+}
+
+export async function setDomainPreference(
+  domain: string,
+  enabled: boolean,
+  source: "user" | "meta"
+): Promise<void> {
+  const prefs = await getDomainPreferences();
+
+  // User preference always wins - if existing is 'user', only update if new is also 'user'
+  const existing = prefs[domain];
+  if (existing?.source === "user" && source === "meta") {
+    // Don't overwrite user preference with meta tag
+    return;
+  }
+
+  prefs[domain] = {
+    enabled,
+    source,
+    lastModified: Date.now()
+  };
+
+  await setDomainPreferences(prefs);
+}
+
+export async function removeDomainPreference(domain: string): Promise<void> {
+  const prefs = await getDomainPreferences();
+  delete prefs[domain];
+  await setDomainPreferences(prefs);
 }

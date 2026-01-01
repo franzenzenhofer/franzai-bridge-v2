@@ -1,4 +1,4 @@
-import type { BridgeSettings, Dict, InjectionRule, LogEntry } from "../shared/types";
+import type { BridgeSettings, BridgeStatus, Dict, DomainPreferences, InjectionRule, LogEntry } from "../shared/types";
 import { BG_EVT, BG_MSG, type BgEvent } from "../shared/messages";
 import { createLogger } from "../shared/logger";
 import { sendRuntimeMessage } from "../shared/runtime";
@@ -11,6 +11,11 @@ type BgResp<T> = {
   error?: string;
   response?: T;
 };
+
+// Domain state
+let currentDomain: string | null = null;
+let currentDomainStatus: BridgeStatus | null = null;
+let allDomainPrefs: DomainPreferences = {};
 
 const log = createLogger("sidepanel");
 
@@ -490,8 +495,12 @@ function renderDetails(l: LogEntry) {
     copyToClipboard(JSON.stringify(allData, null, 2), copyAllBtn);
   };
 
-  topBar.appendChild(copyUrlBtn);
-  topBar.appendChild(copyAllBtn);
+  const leftContainer = document.createElement("div");
+  leftContainer.className = "detail-top-bar-left";
+  leftContainer.appendChild(copyUrlBtn);
+  leftContainer.appendChild(copyAllBtn);
+
+  topBar.appendChild(leftContainer);
   topBar.appendChild(closeBtn);
   details.appendChild(topBar);
 
@@ -643,6 +652,14 @@ function startInlineEdit(
   };
 }
 
+// Map of built-in keys to their target domains (for display)
+const BUILTIN_KEY_TARGETS: Record<string, string> = {
+  "OPENAI_API_KEY": "api.openai.com",
+  "ANTHROPIC_API_KEY": "api.anthropic.com",
+  "GOOGLE_API_KEY": "generativelanguage.googleapis.com",
+  "MISTRAL_API_KEY": "api.mistral.ai"
+};
+
 function renderEnvTable() {
   const envTable = qs<HTMLDivElement>("envTable");
   envTable.innerHTML = "";
@@ -661,33 +678,41 @@ function renderEnvTable() {
   for (const k of keys) {
     const value = env[k];
     const hasValue = value && value.trim() !== "";
+    const isBuiltin = k in BUILTIN_KEY_TARGETS;
 
-    const tr = document.createElement("div");
-    tr.className = "tr env-row";
-
-    const tdKey = document.createElement("div");
-    tdKey.className = "td env-key";
-    tdKey.textContent = k;
-
-    const tdValue = document.createElement("div");
-    tdValue.className = "td env-value";
-    if (hasValue) {
-      tdValue.textContent = "••••••••";
-      tdValue.title = "Value is set (hidden for security)";
-    } else {
-      tdValue.textContent = "Not set";
-      tdValue.classList.add("not-set");
+    // For custom keys, look up target from injection rules
+    let targetDomain: string | null = BUILTIN_KEY_TARGETS[k] || null;
+    if (!isBuiltin && settings?.injectionRules) {
+      const rule = settings.injectionRules.find((r: InjectionRule) => {
+        if (!r.injectHeaders) return false;
+        return Object.values(r.injectHeaders).some((v) => v.includes(`\${${k}}`));
+      });
+      if (rule) {
+        targetDomain = rule.hostPattern;
+      }
     }
 
-    const tdActions = document.createElement("div");
-    tdActions.className = "td actions";
+    // Card container
+    const card = document.createElement("div");
+    card.className = "env-card" + (hasValue ? " has-value" : " no-value");
+
+    // Top row: key name + actions
+    const topRow = document.createElement("div");
+    topRow.className = "env-card-top";
+
+    const keyName = document.createElement("div");
+    keyName.className = "env-card-key";
+    keyName.textContent = k;
+
+    const actions = document.createElement("div");
+    actions.className = "env-card-actions";
 
     const editBtn = document.createElement("button");
     editBtn.className = "icon-btn";
     editBtn.innerHTML = ICON_EDIT;
     editBtn.title = hasValue ? "Edit" : "Set value";
     editBtn.onclick = () => showEnvEditModal(k, env[k] || "");
-    tdActions.appendChild(editBtn);
+    actions.appendChild(editBtn);
 
     const delBtn = document.createElement("button");
     delBtn.className = "icon-btn";
@@ -700,32 +725,94 @@ function renderEnvTable() {
       await saveSettings(next);
       showToast(`Deleted ${k}`);
     };
-    tdActions.appendChild(delBtn);
+    actions.appendChild(delBtn);
 
-    tr.appendChild(tdKey);
-    tr.appendChild(tdValue);
-    tr.appendChild(tdActions);
-    envTable.appendChild(tr);
+    topRow.appendChild(keyName);
+    topRow.appendChild(actions);
+
+    // Bottom row: target + value status
+    const bottomRow = document.createElement("div");
+    bottomRow.className = "env-card-bottom";
+
+    const target = document.createElement("span");
+    const hasTarget = targetDomain !== null;
+    target.className = "env-card-target" + (hasTarget ? " builtin" : " custom");
+    target.textContent = hasTarget ? `→ ${targetDomain}` : "→ No target (add rule)";
+    target.title = hasTarget
+      ? `Key only sent to ${targetDomain}`
+      : "Add injection rule to specify target";
+
+    const status = document.createElement("span");
+    status.className = "env-card-status" + (hasValue ? " set" : " not-set");
+    status.textContent = hasValue ? "✓ Set" : "⚠ Not set";
+
+    bottomRow.appendChild(target);
+    bottomRow.appendChild(status);
+
+    card.appendChild(topRow);
+    card.appendChild(bottomRow);
+    envTable.appendChild(card);
   }
 }
 
 function showEnvEditModal(key: string, currentValue: string) {
+  const isBuiltin = key in BUILTIN_KEY_TARGETS;
+
+  // Look up target from built-in or rules
+  let targetDomain: string | null = BUILTIN_KEY_TARGETS[key] || null;
+  if (!isBuiltin && settings?.injectionRules) {
+    const rule = settings.injectionRules.find((r: InjectionRule) => {
+      if (!r.injectHeaders) return false;
+      return Object.values(r.injectHeaders).some((v) => v.includes(`\${${key}}`));
+    });
+    if (rule) {
+      targetDomain = rule.hostPattern;
+    }
+  }
+
   // Create modal overlay
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
 
   const modal = document.createElement("div");
-  modal.className = "modal";
+  modal.className = "modal env-edit-modal";
 
   const title = document.createElement("div");
   title.className = "modal-title";
   title.textContent = `Edit ${key}`;
 
+  // Target info row
+  const targetRow = document.createElement("div");
+  targetRow.className = "modal-field";
+  const targetLabel = document.createElement("label");
+  targetLabel.textContent = "Target";
+  const targetValue = document.createElement("div");
+  const hasTarget = targetDomain !== null;
+  targetValue.className = "modal-target-value" + (hasTarget ? " builtin" : " custom");
+  if (hasTarget) {
+    targetValue.textContent = targetDomain!;
+    targetValue.title = isBuiltin
+      ? "Built-in key - target cannot be changed"
+      : "Target set via injection rule";
+  } else {
+    targetValue.textContent = "No target (add injection rule)";
+    targetValue.title = "Add a custom injection rule to specify target";
+  }
+  targetRow.appendChild(targetLabel);
+  targetRow.appendChild(targetValue);
+
+  // Value input row
+  const valueRow = document.createElement("div");
+  valueRow.className = "modal-field";
+  const valueLabel = document.createElement("label");
+  valueLabel.textContent = "Value";
   const input = document.createElement("input");
-  input.type = "text";
+  input.type = "password";
   input.value = currentValue;
-  input.placeholder = `Enter value for ${key}`;
+  input.placeholder = `Enter API key or secret`;
   input.className = "modal-input";
+  valueRow.appendChild(valueLabel);
+  valueRow.appendChild(input);
 
   const btnRow = document.createElement("div");
   btnRow.className = "modal-buttons";
@@ -750,7 +837,8 @@ function showEnvEditModal(key: string, currentValue: string) {
   btnRow.appendChild(saveBtn);
 
   modal.appendChild(title);
-  modal.appendChild(input);
+  modal.appendChild(targetRow);
+  modal.appendChild(valueRow);
   modal.appendChild(btnRow);
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
@@ -776,27 +864,150 @@ function showEnvEditModal(key: string, currentValue: string) {
   };
 }
 
-function renderOriginsTable() {
-  renderListTable({
-    tableId: "originsTable",
-    items: settings?.allowedOrigins ?? [],
-    emptyText: "No origins allowed (everything blocked).",
-    onDelete: async (v) => {
-      if (!settings) return;
-      const next = structuredClone(settings);
-      next.allowedOrigins = next.allowedOrigins.filter((x) => x !== v);
-      await saveSettings(next);
-      showToast("Origin removed");
-    },
-    onEdit: async (oldVal, newVal) => {
-      if (!settings) return;
-      const next = structuredClone(settings);
-      const idx = next.allowedOrigins.indexOf(oldVal);
-      if (idx >= 0) next.allowedOrigins[idx] = newVal;
-      await saveSettings(next);
-      showToast("Origin updated");
+function showEnvAddModal() {
+  // Create modal overlay
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+
+  const modal = document.createElement("div");
+  modal.className = "modal env-edit-modal";
+
+  const title = document.createElement("div");
+  title.className = "modal-title";
+  title.textContent = "Add ENV Variable";
+
+  // Name input row
+  const nameRow = document.createElement("div");
+  nameRow.className = "modal-field";
+  const nameLabel = document.createElement("label");
+  nameLabel.textContent = "Name";
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.placeholder = "e.g. MY_API_KEY";
+  nameInput.className = "modal-input";
+  nameRow.appendChild(nameLabel);
+  nameRow.appendChild(nameInput);
+
+  // Target input row
+  const targetRow = document.createElement("div");
+  targetRow.className = "modal-field";
+  const targetLabel = document.createElement("label");
+  targetLabel.textContent = "Target Domain";
+  const targetInput = document.createElement("input");
+  targetInput.type = "text";
+  targetInput.placeholder = "e.g. api.example.com";
+  targetInput.className = "modal-input";
+  const targetHint = document.createElement("div");
+  targetHint.className = "modal-hint";
+  targetHint.textContent = "Key will only be sent to this domain (creates injection rule)";
+  targetRow.appendChild(targetLabel);
+  targetRow.appendChild(targetInput);
+  targetRow.appendChild(targetHint);
+
+  // Value input row
+  const valueRow = document.createElement("div");
+  valueRow.className = "modal-field";
+  const valueLabel = document.createElement("label");
+  valueLabel.textContent = "Value";
+  const valueInput = document.createElement("input");
+  valueInput.type = "password";
+  valueInput.placeholder = "Enter API key or secret";
+  valueInput.className = "modal-input";
+  valueRow.appendChild(valueLabel);
+  valueRow.appendChild(valueInput);
+
+  const btnRow = document.createElement("div");
+  btnRow.className = "modal-buttons";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.onclick = () => overlay.remove();
+
+  const saveBtn = document.createElement("button");
+  saveBtn.className = "primary";
+  saveBtn.textContent = "Add";
+  saveBtn.onclick = async () => {
+    const name = nameInput.value.trim().toUpperCase();
+    const target = targetInput.value.trim().toLowerCase();
+    const value = valueInput.value;
+
+    // Validate name
+    if (!name) {
+      nameInput.classList.add("error");
+      nameInput.focus();
+      showToast("Name is required", true);
+      setTimeout(() => nameInput.classList.remove("error"), 2000);
+      return;
     }
-  });
+
+    // Validate target
+    if (!target) {
+      targetInput.classList.add("error");
+      targetInput.focus();
+      showToast("Target domain is required", true);
+      setTimeout(() => targetInput.classList.remove("error"), 2000);
+      return;
+    }
+
+    if (!settings) return;
+    const next = structuredClone(settings);
+
+    // 1. Add the ENV var
+    next.env[name] = value;
+
+    // 2. Create injection rule for this key -> target
+    const newRule: InjectionRule = {
+      hostPattern: target,
+      injectHeaders: {
+        "Authorization": `Bearer \${${name}}`
+      }
+    };
+
+    // Check if rule already exists for this host with this key
+    const existingRuleIdx = next.injectionRules.findIndex((r: InjectionRule) => {
+      if (r.hostPattern !== target) return false;
+      if (!r.injectHeaders) return false;
+      return Object.values(r.injectHeaders).some((v) => v.includes(`\${${name}}`));
+    });
+
+    if (existingRuleIdx === -1) {
+      next.injectionRules.push(newRule);
+    }
+
+    await saveSettings(next);
+    overlay.remove();
+    showToast(`Added ${name} → ${target}`);
+  };
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(saveBtn);
+
+  modal.appendChild(title);
+  modal.appendChild(nameRow);
+  modal.appendChild(targetRow);
+  modal.appendChild(valueRow);
+  modal.appendChild(btnRow);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  nameInput.focus();
+
+  // Close on Escape, Enter to save
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      overlay.remove();
+      document.removeEventListener("keydown", onKey);
+    }
+    if (e.key === "Enter" && document.activeElement === valueInput) {
+      saveBtn.click();
+    }
+  };
+  document.addEventListener("keydown", onKey);
+
+  // Close on overlay click
+  overlay.onclick = (e) => {
+    if (e.target === overlay) overlay.remove();
+  };
 }
 
 function renderDestsTable() {
@@ -870,9 +1081,228 @@ function renderRulesTable() {
   });
 }
 
+// =============================================================================
+// Domain Functions
+// =============================================================================
+
+async function getCurrentTabDomain(): Promise<string | null> {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.url) return null;
+    const url = new URL(tab.url);
+    // Skip chrome:// and extension pages
+    if (url.protocol === "chrome:" || url.protocol === "chrome-extension:") {
+      return null;
+    }
+    return url.hostname;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchDomainStatus(domain: string): Promise<BridgeStatus | null> {
+  try {
+    const resp = await sendRuntimeMessage<
+      { type: typeof BG_MSG.GET_DOMAIN_STATUS; payload: { domain: string } },
+      { ok: boolean; status: BridgeStatus }
+    >({
+      type: BG_MSG.GET_DOMAIN_STATUS,
+      payload: { domain }
+    });
+    return resp.ok ? resp.status : null;
+  } catch (e) {
+    log.error("Failed to fetch domain status", e);
+    return null;
+  }
+}
+
+async function fetchAllDomainPrefs(): Promise<DomainPreferences> {
+  try {
+    const resp = await sendRuntimeMessage<
+      { type: typeof BG_MSG.GET_ALL_DOMAIN_PREFS },
+      { ok: boolean; prefs: DomainPreferences }
+    >({
+      type: BG_MSG.GET_ALL_DOMAIN_PREFS
+    });
+    return resp.ok ? resp.prefs : {};
+  } catch (e) {
+    log.error("Failed to fetch domain prefs", e);
+    return {};
+  }
+}
+
+async function setDomainEnabled(domain: string, enabled: boolean): Promise<void> {
+  try {
+    await sendRuntimeMessage({
+      type: BG_MSG.SET_DOMAIN_ENABLED,
+      payload: { domain, enabled }
+    });
+    showToast(`Bridge ${enabled ? "enabled" : "disabled"} for ${domain}`);
+    // Refresh state
+    await loadDomainState();
+  } catch (e) {
+    log.error("Failed to set domain enabled", e);
+    showToast("Failed to update domain setting", true);
+  }
+}
+
+async function removeDomainPref(domain: string): Promise<void> {
+  try {
+    await sendRuntimeMessage({
+      type: BG_MSG.REMOVE_DOMAIN_PREF,
+      payload: { domain }
+    });
+    showToast(`Removed preference for ${domain}`);
+    // Refresh state
+    await loadDomainState();
+  } catch (e) {
+    log.error("Failed to remove domain preference", e);
+    showToast("Failed to remove domain preference", true);
+  }
+}
+
+function updateDomainToggleUI() {
+  const toggle = document.getElementById("domainToggle");
+  const nameEl = document.getElementById("domainName");
+  const checkbox = document.getElementById("domainEnabled") as HTMLInputElement | null;
+  const sourceEl = document.getElementById("domainSource");
+
+  if (!toggle || !nameEl || !checkbox || !sourceEl) return;
+
+  if (!currentDomain) {
+    toggle.classList.remove("enabled", "disabled");
+    toggle.style.opacity = "0.5";
+    nameEl.textContent = "—";
+    checkbox.checked = false;
+    checkbox.disabled = true;
+    sourceEl.textContent = "";
+    sourceEl.className = "domain-source";
+    return;
+  }
+
+  toggle.style.opacity = "1";
+  nameEl.textContent = currentDomain;
+  nameEl.title = currentDomain;
+
+  if (currentDomainStatus) {
+    checkbox.checked = currentDomainStatus.domainEnabled;
+    checkbox.disabled = false;
+    toggle.classList.toggle("enabled", currentDomainStatus.domainEnabled);
+    toggle.classList.toggle("disabled", !currentDomainStatus.domainEnabled);
+
+    // Show source indicator (user/meta)
+    if (currentDomainStatus.domainSource === "user") {
+      sourceEl.textContent = "user";
+      sourceEl.className = "domain-source user";
+    } else if (currentDomainStatus.domainSource === "meta") {
+      sourceEl.textContent = "meta";
+      sourceEl.className = "domain-source meta";
+    } else {
+      sourceEl.textContent = "";
+      sourceEl.className = "domain-source";
+    }
+  } else {
+    checkbox.checked = false;
+    checkbox.disabled = true;
+    toggle.classList.remove("enabled");
+    toggle.classList.add("disabled");
+    sourceEl.textContent = "";
+    sourceEl.className = "domain-source";
+  }
+}
+
+async function loadDomainState() {
+  currentDomain = await getCurrentTabDomain();
+
+  if (currentDomain) {
+    currentDomainStatus = await fetchDomainStatus(currentDomain);
+  } else {
+    currentDomainStatus = null;
+  }
+
+  allDomainPrefs = await fetchAllDomainPrefs();
+
+  updateDomainToggleUI();
+  renderDomainsTable();
+}
+
+function renderDomainsTable() {
+  const table = document.getElementById("domainsTable");
+  if (!table) return;
+
+  table.innerHTML = "";
+
+  const domains = Object.keys(allDomainPrefs).sort();
+
+  if (!domains.length) {
+    const hint = document.createElement("div");
+    hint.className = "hint";
+    hint.textContent = "No domain preferences yet. Enable the bridge on a page to add it here.";
+    table.appendChild(hint);
+    return;
+  }
+
+  for (const domain of domains) {
+    const pref = allDomainPrefs[domain];
+    const row = document.createElement("div");
+    row.className = "domain-row " + (pref.enabled ? "enabled" : "disabled");
+
+    const info = document.createElement("div");
+    info.className = "domain-row-info";
+
+    const name = document.createElement("div");
+    name.className = "domain-row-name";
+    name.textContent = domain;
+
+    const meta = document.createElement("div");
+    meta.className = "domain-row-meta";
+
+    const sourceSpan = document.createElement("span");
+    sourceSpan.className = "domain-row-source " + pref.source;
+    sourceSpan.textContent = pref.source;
+    meta.appendChild(sourceSpan);
+
+    const timeSpan = document.createElement("span");
+    const date = new Date(pref.lastModified);
+    timeSpan.textContent = date.toLocaleDateString();
+    timeSpan.title = date.toLocaleString();
+    meta.appendChild(timeSpan);
+
+    info.appendChild(name);
+    info.appendChild(meta);
+
+    const actions = document.createElement("div");
+    actions.className = "domain-row-actions";
+
+    // Toggle for this domain
+    const toggleLabel = document.createElement("label");
+    toggleLabel.className = "toggle-switch";
+    const toggleInput = document.createElement("input");
+    toggleInput.type = "checkbox";
+    toggleInput.checked = pref.enabled;
+    toggleInput.onchange = () => setDomainEnabled(domain, toggleInput.checked);
+    const toggleSlider = document.createElement("span");
+    toggleSlider.className = "toggle-slider";
+    toggleLabel.appendChild(toggleInput);
+    toggleLabel.appendChild(toggleSlider);
+    actions.appendChild(toggleLabel);
+
+    // Delete button
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "domain-delete-btn";
+    deleteBtn.title = "Remove preference";
+    deleteBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    deleteBtn.onclick = () => removeDomainPref(domain);
+    actions.appendChild(deleteBtn);
+
+    row.appendChild(info);
+    row.appendChild(actions);
+    table.appendChild(row);
+  }
+}
+
 function renderSettings() {
   renderEnvTable();
-  renderOriginsTable();
   renderDestsTable();
   renderRulesTable();
 }
@@ -964,50 +1394,8 @@ qs<HTMLButtonElement>("btnResetSettings").onclick = async () => {
   }
 };
 
-qs<HTMLButtonElement>("btnAddEnv").onclick = async () => {
-  if (!settings) return;
-
-  const nameInput = qs<HTMLInputElement>("envName");
-  const valueInput = qs<HTMLInputElement>("envValue");
-  const name = nameInput.value.trim();
-  const value = valueInput.value;
-
-  if (!name) {
-    nameInput.classList.add("error");
-    nameInput.focus();
-    showToast("ENV name required", true);
-    setTimeout(() => nameInput.classList.remove("error"), 2000);
-    return;
-  }
-
-  const next = structuredClone(settings);
-  next.env[name] = value;
-
-  nameInput.value = "";
-  valueInput.value = "";
-
-  await saveSettings(next);
-  showToast(`Added ${name}`);
-};
-
-qs<HTMLButtonElement>("btnAddOrigin").onclick = async () => {
-  if (!settings) return;
-  const input = qs<HTMLInputElement>("originValue");
-  const v = input.value.trim();
-  if (!v) {
-    input.focus();
-    return;
-  }
-
-  const next = structuredClone(settings);
-  if (!next.allowedOrigins.includes(v)) {
-    next.allowedOrigins.push(v);
-    input.value = "";
-    await saveSettings(next);
-    showToast("Origin added");
-  } else {
-    showToast("Origin already exists", true);
-  }
+qs<HTMLButtonElement>("btnAddEnv").onclick = () => {
+  showEnvAddModal();
 };
 
 qs<HTMLButtonElement>("btnAddDest").onclick = async () => {
@@ -1078,23 +1466,29 @@ qs<HTMLButtonElement>("btnAddRule").onclick = async () => {
 };
 
 /** Tab switching */
-function switchTab(tab: "requests" | "settings" | "advanced") {
+function switchTab(tab: "requests" | "settings" | "advanced" | "domains") {
   const requestsPage = document.getElementById("tab-requests");
   const settingsPage = document.getElementById("tab-settings");
   const advancedPage = document.getElementById("tab-advanced");
+  const domainsPage = document.getElementById("tab-domains");
   const requestsToolbar = document.getElementById("toolbar-requests");
   const settingsToolbar = document.getElementById("toolbar-settings");
   const advancedToolbar = document.getElementById("toolbar-advanced");
+  const domainsToolbar = document.getElementById("toolbar-domains");
   const settingsBtn = document.getElementById("btnSettings");
+  const domainsBtn = document.getElementById("btnDomains");
 
   // Hide all
   requestsPage?.classList.remove("active");
   settingsPage?.classList.remove("active");
   advancedPage?.classList.remove("active");
+  domainsPage?.classList.remove("active");
   requestsToolbar?.classList.add("hidden");
   settingsToolbar?.classList.add("hidden");
   advancedToolbar?.classList.add("hidden");
+  domainsToolbar?.classList.add("hidden");
   settingsBtn?.classList.remove("active");
+  domainsBtn?.classList.remove("active");
 
   // Show selected
   if (tab === "settings") {
@@ -1105,6 +1499,12 @@ function switchTab(tab: "requests" | "settings" | "advanced") {
     advancedPage?.classList.add("active");
     advancedToolbar?.classList.remove("hidden");
     settingsBtn?.classList.add("active");
+  } else if (tab === "domains") {
+    domainsPage?.classList.add("active");
+    domainsToolbar?.classList.remove("hidden");
+    domainsBtn?.classList.add("active");
+    // Refresh domains when switching to tab
+    loadDomainState();
   } else {
     requestsPage?.classList.add("active");
     requestsToolbar?.classList.remove("hidden");
@@ -1112,14 +1512,29 @@ function switchTab(tab: "requests" | "settings" | "advanced") {
 }
 
 qs<HTMLButtonElement>("btnSettings").onclick = () => switchTab("settings");
+qs<HTMLButtonElement>("btnDomains").onclick = () => switchTab("domains");
 qs<HTMLButtonElement>("btnBackToRequests").onclick = () => switchTab("requests");
+qs<HTMLButtonElement>("btnBackFromDomains").onclick = () => switchTab("requests");
 qs<HTMLButtonElement>("btnBackToSettings").onclick = () => switchTab("settings");
 qs<HTMLElement>("advancedLink").onclick = () => switchTab("advanced");
+
+// Domain toggle in header
+const domainEnabledCheckbox = document.getElementById("domainEnabled") as HTMLInputElement | null;
+if (domainEnabledCheckbox) {
+  domainEnabledCheckbox.onchange = () => {
+    if (currentDomain) {
+      setDomainEnabled(currentDomain, domainEnabledCheckbox.checked);
+    }
+  };
+}
 
 const port = chrome.runtime.connect({ name: "FRANZAI_SIDEPANEL" });
 port.onMessage.addListener(async (evt: BgEvent) => {
   if (evt.type === BG_EVT.LOGS_UPDATED || evt.type === BG_EVT.SETTINGS_UPDATED) {
     await loadAll();
+  }
+  if (evt.type === BG_EVT.DOMAIN_PREFS_UPDATED) {
+    await loadDomainState();
   }
 });
 
@@ -1405,4 +1820,5 @@ qs<HTMLButtonElement>("btnExportLogs").onclick = () => {
   await loadUIPrefs();
   applyColumnWidths();
   await loadAll();
+  await loadDomainState();
 })();
