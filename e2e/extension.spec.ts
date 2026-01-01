@@ -1,4 +1,5 @@
-import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import { waitForFranzai } from "./extension-helpers";
 
 /**
  * E2E tests for FranzAI Bridge Chrome Extension
@@ -11,19 +12,6 @@ import { test, expect, type BrowserContext, type Page } from "@playwright/test";
  *
  * Note: The extension only injects on allowed origins (localhost by default)
  */
-
-// Helper to wait for franzai object
-async function waitForFranzai(page: Page, timeout = 5000): Promise<boolean> {
-  const startTime = Date.now();
-  while (Date.now() - startTime < timeout) {
-    const hasFranzai = await page.evaluate(() => {
-      return typeof (window as unknown as { franzai?: unknown }).franzai !== "undefined";
-    });
-    if (hasFranzai) return true;
-    await page.waitForTimeout(100);
-  }
-  return false;
-}
 
 test.describe("FranzAI Bridge Extension", () => {
   test.describe("Extension Loading", () => {
