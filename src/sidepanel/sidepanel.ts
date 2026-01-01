@@ -271,6 +271,19 @@ function getHost(url: string): string {
   }
 }
 
+function getOriginHostname(origin: string): string {
+  try {
+    return new URL(origin).hostname;
+  } catch {
+    return "";
+  }
+}
+
+function filterLogsByDomain(logsToFilter: LogEntry[]): LogEntry[] {
+  if (!currentDomain) return [];
+  return logsToFilter.filter(l => getOriginHostname(l.pageOrigin) === currentDomain);
+}
+
 function sortLogs(logsToSort: LogEntry[]): LogEntry[] {
   const sorted = [...logsToSort];
   const dir = sortDir === "asc" ? 1 : -1;
@@ -328,12 +341,25 @@ function renderLogs() {
     return;
   }
 
+  const domainLogs = filterLogsByDomain(logs);
+  if (!domainLogs.length) {
+    const hint = document.createElement("div");
+    hint.className = "hint";
+    hint.textContent = currentDomain
+      ? `No requests for ${currentDomain} yet.`
+      : "No active domain selected.";
+    logsList.appendChild(hint);
+    if (detailPane) detailPane.classList.remove("visible");
+    updateFilterUI(0, 0);
+    return;
+  }
+
   // Filter then sort logs
-  const filteredLogs = filterLogs(logs);
+  const filteredLogs = filterLogs(domainLogs);
   const sortedLogs = sortLogs(filteredLogs);
 
   // Update filter UI (count + clear button visibility)
-  updateFilterUI(filteredLogs.length, logs.length);
+  updateFilterUI(filteredLogs.length, domainLogs.length);
 
   // Show empty state if all filtered out
   if (!filteredLogs.length) {
@@ -345,6 +371,10 @@ function renderLogs() {
     if (clearLink) clearLink.onclick = (e) => { e.preventDefault(); clearFilters(); };
     if (detailPane) detailPane.classList.remove("visible");
     return;
+  }
+
+  if (selectedLogId && !filteredLogs.some(l => l.id === selectedLogId)) {
+    closeDetailPane();
   }
 
   for (const l of sortedLogs) {
@@ -1212,6 +1242,7 @@ function updateDomainToggleUI() {
 }
 
 async function loadDomainState() {
+  const previousDomain = currentDomain;
   currentDomain = await getCurrentTabDomain();
 
   if (currentDomain) {
@@ -1224,6 +1255,10 @@ async function loadDomainState() {
 
   updateDomainToggleUI();
   renderDomainsTable();
+  if (previousDomain !== currentDomain) {
+    closeDetailPane();
+  }
+  renderLogs();
 }
 
 function renderDomainsTable() {
@@ -1535,6 +1570,18 @@ port.onMessage.addListener(async (evt: BgEvent) => {
   }
   if (evt.type === BG_EVT.DOMAIN_PREFS_UPDATED) {
     await loadDomainState();
+  }
+});
+
+const refreshActiveTab = debounce(() => {
+  loadDomainState();
+}, 150);
+
+chrome.tabs.onActivated.addListener(() => refreshActiveTab());
+chrome.tabs.onUpdated.addListener((_, changeInfo, tab) => {
+  if (!tab.active) return;
+  if (changeInfo.url || changeInfo.status === "complete") {
+    refreshActiveTab();
   }
 });
 
