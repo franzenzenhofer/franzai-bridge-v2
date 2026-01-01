@@ -30,6 +30,7 @@ import {
 } from "./shared/constants";
 import { createLogger } from "./shared/logger";
 import { makeId } from "./shared/ids";
+import { getConfiguredKeyNames } from "./shared/keys";
 
 const log = createLogger("bg");
 
@@ -222,6 +223,13 @@ chrome.runtime.onMessage.addListener((msg: BgMessage, sender, sendResponse) => {
           const isSet = !!(keyName && settings.env[keyName]?.trim());
           // NEVER return the actual key value - only boolean
           sendResponse({ ok: true, isSet });
+          return;
+        }
+        case BG_MSG.GET_KEY_NAMES: {
+          const settings = await getSettings();
+          const keys = getConfiguredKeyNames(settings.env);
+          // NEVER return key values - only names of configured keys
+          sendResponse({ ok: true, keys });
           return;
         }
         case BG_MSG.GET_DOMAIN_STATUS: {

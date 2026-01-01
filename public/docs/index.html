@@ -333,6 +333,14 @@ console.<span class="function">log</span>(data.choices[0].message.content);</cod
     <p>Check if a key is configured in the extension (does not expose the key).</p>
 <pre><code><span class="keyword">const</span> hasKey = <span class="keyword">await</span> window.franzai.<span class="function">isKeySet</span>(<span class="string">'OPENAI_API_KEY'</span>);</code></pre>
 
+    <h3>window.franzai.hasApiKey(keyName)</h3>
+    <p>Alias for <code>isKeySet</code>. Checks if a specific API key is configured.</p>
+<pre><code><span class="keyword">const</span> hasKey = <span class="keyword">await</span> window.franzai.<span class="function">hasApiKey</span>(<span class="string">'OPENAI_API_KEY'</span>);</code></pre>
+
+    <h3>window.franzai.keys</h3>
+    <p>Array of configured key names (values are never exposed).</p>
+<pre><code><span class="keyword">const</span> keys = window.franzai.keys; <span class="comment">// ['OPENAI_API_KEY', 'MISTRAL_API_KEY']</span></code></pre>
+
     <h3>window.franzai.getStatus()</h3>
     <p>Get bridge readiness for the current domain.</p>
     <table>
@@ -708,6 +716,22 @@ Check if a key is configured in the extension (does not expose the key).
 
 ```javascript
 const hasKey = await window.franzai.isKeySet('OPENAI_API_KEY');
+```
+
+### window.franzai.hasApiKey(keyName)
+
+Alias for `isKeySet`. Checks if a specific API key is configured.
+
+```javascript
+const hasKey = await window.franzai.hasApiKey('OPENAI_API_KEY');
+```
+
+### window.franzai.keys
+
+Array of configured key names (values are never exposed).
+
+```javascript
+const keys = window.franzai.keys; // ['OPENAI_API_KEY', 'MISTRAL_API_KEY']
 ```
 
 ### window.franzai.getStatus()

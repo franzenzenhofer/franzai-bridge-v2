@@ -15,6 +15,7 @@ export const BG_MSG = {
   GET_LOGS: "FRANZAI_GET_LOGS",
   CLEAR_LOGS: "FRANZAI_CLEAR_LOGS",
   IS_KEY_SET: "FRANZAI_IS_KEY_SET",
+  GET_KEY_NAMES: "FRANZAI_GET_KEY_NAMES",
   // Domain preference messages
   GET_DOMAIN_STATUS: "FRANZAI_GET_DOMAIN_STATUS",
   SET_DOMAIN_ENABLED: "FRANZAI_SET_DOMAIN_ENABLED",
@@ -36,6 +37,9 @@ export const PAGE_MSG = {
   BRIDGE_READY: "BRIDGE_READY",
   KEY_CHECK_REQUEST: "KEY_CHECK_REQUEST",
   KEY_CHECK_RESPONSE: "KEY_CHECK_RESPONSE",
+  KEYS_REQUEST: "KEYS_REQUEST",
+  KEYS_RESPONSE: "KEYS_RESPONSE",
+  KEYS_UPDATE: "KEYS_UPDATE",
   STATUS_REQUEST: "STATUS_REQUEST",
   STATUS_RESPONSE: "STATUS_RESPONSE",
   DOMAIN_ENABLED_UPDATE: "DOMAIN_ENABLED_UPDATE"
@@ -49,6 +53,7 @@ export type BgMessage =
   | { type: typeof BG_MSG.GET_LOGS }
   | { type: typeof BG_MSG.CLEAR_LOGS }
   | { type: typeof BG_MSG.IS_KEY_SET; payload: { keyName: string } }
+  | { type: typeof BG_MSG.GET_KEY_NAMES }
   | { type: typeof BG_MSG.GET_DOMAIN_STATUS; payload: { domain: string } }
   | { type: typeof BG_MSG.SET_DOMAIN_ENABLED; payload: { domain: string; enabled: boolean } }
   | { type: typeof BG_MSG.GET_ALL_DOMAIN_PREFS }
@@ -65,10 +70,13 @@ export type PageToContentMessage =
   | { source: string; type: typeof PAGE_MSG.FETCH_ABORT; payload: { requestId: string } }
   | { source: string; type: typeof PAGE_MSG.BRIDGE_READY; payload: { version: string } }
   | { source: string; type: typeof PAGE_MSG.KEY_CHECK_REQUEST; payload: { checkId: string; keyName: string } }
+  | { source: string; type: typeof PAGE_MSG.KEYS_REQUEST; payload: { keysId: string } }
   | { source: string; type: typeof PAGE_MSG.STATUS_REQUEST; payload: { statusId: string } };
 
 export type ContentToPageMessage =
   | { source: string; type: typeof PAGE_MSG.FETCH_RESPONSE; payload: FetchEnvelope }
   | { source: string; type: typeof PAGE_MSG.KEY_CHECK_RESPONSE; payload: { checkId: string; isSet: boolean } }
+  | { source: string; type: typeof PAGE_MSG.KEYS_RESPONSE; payload: { keysId: string; keys: string[] } }
+  | { source: string; type: typeof PAGE_MSG.KEYS_UPDATE; payload: { keys: string[] } }
   | { source: string; type: typeof PAGE_MSG.STATUS_RESPONSE; payload: { statusId: string; status: BridgeStatus } }
   | { source: string; type: typeof PAGE_MSG.DOMAIN_ENABLED_UPDATE; payload: { enabled: boolean; source: string } };

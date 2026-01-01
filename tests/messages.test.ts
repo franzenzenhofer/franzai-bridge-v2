@@ -24,6 +24,10 @@ describe("messages", () => {
       expect(BG_MSG.GET_LOGS).toBe("FRANZAI_GET_LOGS");
     });
 
+    it("has GET_KEY_NAMES message type", () => {
+      expect(BG_MSG.GET_KEY_NAMES).toBe("FRANZAI_GET_KEY_NAMES");
+    });
+
     it("has CLEAR_LOGS message type", () => {
       expect(BG_MSG.CLEAR_LOGS).toBe("FRANZAI_CLEAR_LOGS");
     });
@@ -66,6 +70,18 @@ describe("messages", () => {
 
     it("has BRIDGE_READY message type", () => {
       expect(PAGE_MSG.BRIDGE_READY).toBe("BRIDGE_READY");
+    });
+
+    it("has KEYS_REQUEST message type", () => {
+      expect(PAGE_MSG.KEYS_REQUEST).toBe("KEYS_REQUEST");
+    });
+
+    it("has KEYS_RESPONSE message type", () => {
+      expect(PAGE_MSG.KEYS_RESPONSE).toBe("KEYS_RESPONSE");
+    });
+
+    it("has KEYS_UPDATE message type", () => {
+      expect(PAGE_MSG.KEYS_UPDATE).toBe("KEYS_UPDATE");
     });
 
     it("all message types are unique", () => {

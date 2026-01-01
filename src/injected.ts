@@ -107,6 +107,8 @@ type FranzAIBridge = {
   setMode(mode: BridgeMode): BridgeMode;
   getMode(): BridgeMode;
   isKeySet(keyName: string): Promise<boolean>;
+  hasApiKey(keyName: string): Promise<boolean>;
+  keys: string[];
   getStatus(): Promise<BridgeStatus>;
 };
 
@@ -116,6 +118,57 @@ type FranzAIBridge = {
 
 const domainStatusCache = initDomainStatusCache();
 let domainStatusPromise: Promise<BridgeStatus> | null = null;
+let cachedKeyNames: string[] = [];
+let keysPromise: Promise<string[]> | null = null;
+
+function updateKeyCache(keys: string[]) {
+  cachedKeyNames = keys;
+  if (win.franzai) {
+    win.franzai.keys = [...cachedKeyNames];
+  }
+}
+
+async function refreshKeyNames(): Promise<string[]> {
+  if (keysPromise) return keysPromise;
+
+  keysPromise = new Promise<string[]>((resolve) => {
+    const keysId = makeId("keys");
+    const timeoutId = window.setTimeout(() => {
+      window.removeEventListener("message", onMessage);
+      keysPromise = null;
+      resolve(cachedKeyNames);
+    }, 5000);
+
+    const onMessage = (ev: MessageEvent) => {
+      if (ev.source !== window) return;
+      const data = ev.data as { source?: string; type?: string; payload?: { keysId?: string; keys?: string[] } };
+      if (!data || data.source !== BRIDGE_SOURCE) return;
+      if (data.type !== PAGE_MSG.KEYS_RESPONSE) return;
+      if (data.payload?.keysId !== keysId) return;
+
+      clearTimeout(timeoutId);
+      window.removeEventListener("message", onMessage);
+      keysPromise = null;
+
+      const nextKeys = Array.isArray(data.payload?.keys) ? data.payload.keys : [];
+      updateKeyCache(nextKeys);
+      resolve(cachedKeyNames);
+    };
+
+    window.addEventListener("message", onMessage);
+
+    window.postMessage(
+      {
+        source: BRIDGE_SOURCE,
+        type: PAGE_MSG.KEYS_REQUEST,
+        payload: { keysId }
+      },
+      "*"
+    );
+  });
+
+  return keysPromise;
+}
 
 async function fetchDomainStatus(): Promise<BridgeStatus> {
   // If already fetching, return existing promise
@@ -180,6 +233,17 @@ window.addEventListener("message", (ev) => {
   log.info("DOMAIN_ENABLED_UPDATE received:", enabled, "cache status:", !!domainStatusCache.status);
   applyDomainEnabledUpdate(domainStatusCache, data.payload ?? {});
   log.info("Domain enabled cache updated:", getCachedDomainEnabled(domainStatusCache));
+});
+
+window.addEventListener("message", (ev) => {
+  if (ev.source !== window) return;
+  const data = ev.data as { source?: string; type?: string; payload?: { keys?: string[] } };
+  if (!data || data.source !== BRIDGE_SOURCE) return;
+  if (data.type !== PAGE_MSG.KEYS_UPDATE) return;
+
+  if (Array.isArray(data.payload?.keys)) {
+    updateKeyCache(data.payload.keys);
+  }
 });
 
 const REQUEST_META = Symbol.for("franzaiBridgeMeta");
@@ -457,6 +521,7 @@ function shouldUseBridgeForRequest(input: RequestInfo | URL, init?: BridgeInit):
 
 const franzai: FranzAIBridge = {
   version: BRIDGE_VERSION,
+  keys: [],
 
   async ping() {
     return { ok: true, version: franzai.version };
@@ -505,6 +570,10 @@ const franzai: FranzAIBridge = {
         "*"
       );
     });
+  },
+
+  async hasApiKey(keyName: string): Promise<boolean> {
+    return franzai.isKeySet(keyName);
   },
 
   async getStatus(): Promise<BridgeStatus> {
@@ -682,7 +751,7 @@ function installRequestHook() {
 // PROTECTED HOOK INSTALLATION (only on first install)
 // =============================================================================
 
-if (!ALREADY_INSTALLED) {
+  if (!ALREADY_INSTALLED) {
   // Expose the franzai API (protected)
   Object.defineProperty(win, "franzai", {
     value: franzai,
@@ -724,6 +793,11 @@ if (!ALREADY_INSTALLED) {
     version: franzai.version,
     mode: bridgeConfig.mode,
     locked: bridgeConfig.lockHooks
+  });
+
+  // Prime key list (best-effort). This never exposes values.
+  refreshKeyNames().catch(() => {
+    // Ignore refresh failures; keys can be requested later.
   });
 
   // =============================================================================

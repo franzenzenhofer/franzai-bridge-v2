@@ -53,6 +53,30 @@ port.onMessage.addListener(async (evt: BgEvent) => {
       log.warn("Failed to fetch updated domain status", e);
     }
   }
+
+  if (evt.type === BG_EVT.SETTINGS_UPDATED) {
+    try {
+      const resp = await sendRuntimeMessage<
+        { type: typeof BG_MSG.GET_KEY_NAMES },
+        { ok: boolean; keys: string[] }
+      >({
+        type: BG_MSG.GET_KEY_NAMES
+      });
+
+      if (resp.ok && Array.isArray(resp.keys)) {
+        window.postMessage(
+          {
+            source: BRIDGE_SOURCE,
+            type: PAGE_MSG.KEYS_UPDATE,
+            payload: { keys: resp.keys }
+          },
+          "*"
+        );
+      }
+    } catch (e) {
+      log.warn("Failed to fetch updated key list", e);
+    }
+  }
 });
 
 // =============================================================================
@@ -147,6 +171,41 @@ window.addEventListener("message", async (event) => {
         "*"
       );
     }
+    return;
+  }
+
+  if (data.type === PAGE_MSG.KEYS_REQUEST) {
+    const { keysId } = data.payload;
+    if (!keysId) return;
+
+    try {
+      const resp = await sendRuntimeMessage<
+        { type: typeof BG_MSG.GET_KEY_NAMES },
+        { ok: boolean; keys: string[] }
+      >({
+        type: BG_MSG.GET_KEY_NAMES
+      });
+
+      window.postMessage(
+        {
+          source: BRIDGE_SOURCE,
+          type: PAGE_MSG.KEYS_RESPONSE,
+          payload: { keysId, keys: resp.ok ? resp.keys : [] }
+        },
+        "*"
+      );
+    } catch (e) {
+      log.warn("Failed to fetch key list", e);
+      window.postMessage(
+        {
+          source: BRIDGE_SOURCE,
+          type: PAGE_MSG.KEYS_RESPONSE,
+          payload: { keysId, keys: [] }
+        },
+        "*"
+      );
+    }
+
     return;
   }
 
