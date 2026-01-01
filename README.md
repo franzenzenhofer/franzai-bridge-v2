@@ -232,7 +232,7 @@ const status = await window.franzai.getStatus();
 console.log(status);
 // {
 //   installed: true,
-//   version: "2.0.38",
+//   version: "2.0.53",
 //   domainEnabled: true,
 //   domainSource: "meta",  // or "user" or "default"
 //   originAllowed: true,
@@ -280,6 +280,10 @@ window.franzai.setMode("always");
 
 // Check if an API key is configured (never returns the actual key!)
 const hasOpenAI = await window.franzai.isKeySet("OPENAI_API_KEY");
+const hasOpenAI2 = await window.franzai.hasApiKey("OPENAI_API_KEY");
+
+// Get configured key names (values are never exposed)
+const keys = window.franzai.keys; // e.g., ["OPENAI_API_KEY", "MISTRAL_API_KEY"]
 
 // Get detailed bridge status (great for debugging)
 const status = await window.franzai.getStatus();
