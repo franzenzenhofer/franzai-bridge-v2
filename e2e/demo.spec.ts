@@ -14,6 +14,9 @@ import { prepareProfileDir, cleanupProfileDir, describeProfileChoice } from "../
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.resolve(__dirname, "../dist");
 const demoPath = path.resolve(__dirname, "../demo/index.html");
+const demoUrl = "http://localhost:8765/demo/index.html";
+const demoHtml = fs.readFileSync(demoPath, "utf8");
+const demoRoutes = new WeakSet<BrowserContext>();
 
 type ExtensionContext = {
   context: BrowserContext;
@@ -40,10 +43,10 @@ const withExtension = async (): Promise<ExtensionContext> => {
   }
   const profile = prepareProfileDir();
   console.info(`[e2e] Using ${describeProfileChoice(profile)}`);
-  const headless = process.env.PW_EXT_HEADLESS === "1";
+  const headlessRequested = process.env.PW_EXT_HEADLESS !== "0";
   const context = await chromium.launchPersistentContext(profile.userDataDir, {
-    args: buildArgs(headless),
-    headless,
+    args: buildArgs(headlessRequested),
+    headless: false
   });
   const cleanup = () => cleanupProfileDir(profile);
   const extensionId = await findExtensionId(context, profile.userDataDir);
@@ -95,250 +98,103 @@ const readExtensionIdFromPreferences = (profileDir: string): string | null => {
   return null;
 };
 
+const ensureDemoRoute = async (ctx: BrowserContext): Promise<void> => {
+  if (demoRoutes.has(ctx)) return;
+  demoRoutes.add(ctx);
+
+  await ctx.route("http://localhost:8765/**", async (route) => {
+    const url = route.request().url();
+    if (url.endsWith("/demo") || url.endsWith("/demo/") || url.endsWith("/demo/index.html")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "text/html",
+        body: demoHtml
+      });
+      return;
+    }
+    if (url.endsWith("/favicon.ico")) {
+      await route.fulfill({ status: 204, body: "" });
+      return;
+    }
+    await route.fulfill({ status: 404, contentType: "text/plain", body: "Not found" });
+  });
+};
+
+const openDemoPage = async (ctx: BrowserContext): Promise<import("@playwright/test").Page> => {
+  await ensureDemoRoute(ctx);
+  const page = await ctx.newPage();
+  await page.goto(demoUrl, { waitUntil: "load", timeout: 10_000 });
+  return page;
+};
+
+const configureExtensionForDemo = async (ctx: BrowserContext, extensionId: string): Promise<void> => {
+  const bgPage = await ctx.newPage();
+  await bgPage.goto(`chrome-extension://${extensionId}/sidepanel/index.html`);
+  await bgPage.waitForTimeout(500);
+
+  const cdp = await ctx.newCDPSession(bgPage);
+  await cdp.send("Runtime.evaluate", {
+    expression: `
+      (async () => {
+        const settings = {
+          allowedOrigins: ["http://localhost:*", "https://localhost:*"],
+          allowedDestinations: ["*"],
+          env: {},
+          injectionRules: [],
+          maxLogs: 100
+        };
+        await chrome.storage.local.set({ franzaiSettings: settings });
+        await chrome.runtime.sendMessage({
+          type: "FRANZAI_SET_DOMAIN_ENABLED",
+          payload: { domain: "localhost", enabled: true }
+        });
+        return "ok";
+      })()
+    `,
+    awaitPromise: true
+  });
+  await bgPage.close();
+};
+
 test.describe("Demo Page", () => {
-  test("demo page loads and detects extension", async () => {
+  test("demo page loads and shows ready status", async () => {
     const { context: ctx, cleanup, extensionId } = await withExtension();
     try {
-      // First configure extension to allow file:// URLs
-      const bgPage = await ctx.newPage();
-      await bgPage.goto(`chrome-extension://${extensionId}/sidepanel/index.html`);
-      await bgPage.waitForTimeout(1000);
+      await configureExtensionForDemo(ctx, extensionId);
+      const demoPage = await openDemoPage(ctx);
+      await demoPage.waitForFunction(
+        () => document.getElementById("statusText")?.textContent?.includes("Ready"),
+        null,
+        { timeout: 10_000 }
+      );
 
-      const cdp = await ctx.newCDPSession(bgPage);
-      await cdp.send("Runtime.evaluate", {
-        expression: `
-          (async () => {
-            const settings = {
-              allowedOrigins: ["file://*", "http://localhost:*", "https://localhost:*"],
-              allowedDestinations: ["*"],
-              env: {},
-              injectionRules: [],
-              maxLogs: 100
-            };
-            await chrome.storage.local.set({ franzaiSettings: settings });
-            return "ok";
-          })()
-        `,
-        awaitPromise: true
-      });
-      await bgPage.waitForTimeout(1000);
-
-      // Open the demo page and reload to ensure content script injects
-      const demoPage = await ctx.newPage();
-      await demoPage.goto(`file://${demoPath}`);
-      await demoPage.waitForTimeout(1000);
-      await demoPage.reload();
-      await demoPage.waitForTimeout(3000);
-
-      // Check that the page loaded
-      const title = await demoPage.title();
-      expect(title).toContain("FranzAI Bridge");
-
-      // Check extension detection - may or may not be available depending on file:// permissions
-      const extText = await demoPage.locator("#extensionText").textContent();
-      // Extension might not inject on file:// URLs in headless mode, so accept both states
-      expect(["Loaded", "Not Found"]).toContain(extText);
+      const statusText = await demoPage.locator("#statusText").textContent();
+      expect(statusText).toContain("Ready");
+      await expect(demoPage.locator(".input-panel")).toBeVisible();
     } finally {
       await ctx.close();
       cleanup();
     }
   });
 
-  test("demo page extension detection test works", async () => {
+  test("demo page sends request and logs result", async () => {
     const { context: ctx, cleanup, extensionId } = await withExtension();
     try {
-      // Configure extension
-      const bgPage = await ctx.newPage();
-      await bgPage.goto(`chrome-extension://${extensionId}/sidepanel/index.html`);
-      await bgPage.waitForTimeout(1000);
+      await configureExtensionForDemo(ctx, extensionId);
+      const demoPage = await openDemoPage(ctx);
+      await demoPage.waitForFunction(
+        () => document.getElementById("statusText")?.textContent?.includes("Ready"),
+        null,
+        { timeout: 10_000 }
+      );
 
-      const cdp = await ctx.newCDPSession(bgPage);
-      await cdp.send("Runtime.evaluate", {
-        expression: `
-          (async () => {
-            const settings = {
-              allowedOrigins: ["file://*", "http://localhost:*"],
-              allowedDestinations: ["*"],
-              env: {},
-              injectionRules: [],
-              maxLogs: 100
-            };
-            await chrome.storage.local.set({ franzaiSettings: settings });
-            return "ok";
-          })()
-        `,
-        awaitPromise: true
-      });
-      await bgPage.waitForTimeout(1000);
+      await demoPage.selectOption("#provider", "httpbin");
+      await demoPage.fill("#prompt", "Hello from e2e");
+      await demoPage.click("#sendBtn");
 
-      const demoPage = await ctx.newPage();
-      await demoPage.goto(`file://${demoPath}`);
-      await demoPage.waitForTimeout(1000);
-      await demoPage.reload();
-      await demoPage.waitForTimeout(3000);
-
-      // Click the Test Detection button
-      await demoPage.click('button:has-text("Test Detection")');
-      await demoPage.waitForTimeout(500);
-
-      // Check the result - extension may or may not be available on file:// URLs
-      const result = await demoPage.locator("#detectionResult").textContent();
-      expect(result).toContain("detected");
-      // Result contains "detected" (either "detected: true" or "Extension not detected")
-    } finally {
-      await ctx.close();
-      cleanup();
-    }
-  });
-
-  test("demo page mode control works", async () => {
-    const { context: ctx, cleanup, extensionId } = await withExtension();
-    try {
-      // Configure extension
-      const bgPage = await ctx.newPage();
-      await bgPage.goto(`chrome-extension://${extensionId}/sidepanel/index.html`);
-      await bgPage.waitForTimeout(1000);
-
-      const cdp = await ctx.newCDPSession(bgPage);
-      await cdp.send("Runtime.evaluate", {
-        expression: `
-          (async () => {
-            const settings = {
-              allowedOrigins: ["file://*", "http://localhost:*"],
-              allowedDestinations: ["*"],
-              env: {},
-              injectionRules: [],
-              maxLogs: 100
-            };
-            await chrome.storage.local.set({ franzaiSettings: settings });
-            return "ok";
-          })()
-        `,
-        awaitPromise: true
-      });
-      await bgPage.waitForTimeout(1000);
-
-      const demoPage = await ctx.newPage();
-      await demoPage.goto(`file://${demoPath}`);
-      await demoPage.waitForTimeout(1000);
-      await demoPage.reload();
-      await demoPage.waitForTimeout(3000);
-
-      // Click Set Always button
-      await demoPage.click('button:has-text("Set Always")');
-      await demoPage.waitForTimeout(500);
-
-      // Check the result - may fail if extension not injected on file://
-      const result = await demoPage.locator("#modeResult").textContent();
-      // Accept either success or "Extension not available" (file:// limitation)
-      expect(result?.includes("always") || result?.includes("not available")).toBe(true);
-    } finally {
-      await ctx.close();
-      cleanup();
-    }
-  });
-
-  test("demo page CORS bypass test works", async () => {
-    const { context: ctx, cleanup, extensionId } = await withExtension();
-    try {
-      // Configure extension
-      const bgPage = await ctx.newPage();
-      await bgPage.goto(`chrome-extension://${extensionId}/sidepanel/index.html`);
-      await bgPage.waitForTimeout(1000);
-
-      const cdp = await ctx.newCDPSession(bgPage);
-      await cdp.send("Runtime.evaluate", {
-        expression: `
-          (async () => {
-            const settings = {
-              allowedOrigins: ["file://*", "http://localhost:*"],
-              allowedDestinations: ["*"],
-              env: {},
-              injectionRules: [],
-              maxLogs: 100
-            };
-            await chrome.storage.local.set({ franzaiSettings: settings });
-            return "ok";
-          })()
-        `,
-        awaitPromise: true
-      });
-      await bgPage.waitForTimeout(500);
-
-      const demoPage = await ctx.newPage();
-      await demoPage.goto(`file://${demoPath}`);
-      await demoPage.waitForTimeout(2000);
-
-      // Set mode to always for CORS bypass
-      await demoPage.click('button:has-text("Set Always")');
-      await demoPage.waitForTimeout(300);
-
-      // Test CORS bypass with httpbin
-      await demoPage.click('button:has-text("Test httpbin.org")');
-      await demoPage.waitForTimeout(3000);
-
-      // Check the result
-      const result = await demoPage.locator("#corsResult").textContent();
-      const resultClass = await demoPage.locator("#corsResult").getAttribute("class");
-
-      // Should be success (green border)
-      expect(resultClass).toContain("success");
-      expect(result).toContain("status");
-      expect(result).toContain("200");
-    } finally {
-      await ctx.close();
-      cleanup();
-    }
-  });
-
-  test("demo page automated test suite runs", async () => {
-    const { context: ctx, cleanup, extensionId } = await withExtension();
-    try {
-      // Configure extension
-      const bgPage = await ctx.newPage();
-      await bgPage.goto(`chrome-extension://${extensionId}/sidepanel/index.html`);
-      await bgPage.waitForTimeout(1000);
-
-      const cdp = await ctx.newCDPSession(bgPage);
-      await cdp.send("Runtime.evaluate", {
-        expression: `
-          (async () => {
-            const settings = {
-              allowedOrigins: ["file://*", "http://localhost:*"],
-              allowedDestinations: ["*"],
-              env: {},
-              injectionRules: [],
-              maxLogs: 100
-            };
-            await chrome.storage.local.set({ franzaiSettings: settings });
-            return "ok";
-          })()
-        `,
-        awaitPromise: true
-      });
-      await bgPage.waitForTimeout(500);
-
-      const demoPage = await ctx.newPage();
-      await demoPage.goto(`file://${demoPath}`);
-      await demoPage.waitForTimeout(2000);
-
-      // Click Run All Tests button
-      await demoPage.click('button:has-text("Run All Tests")');
-
-      // Wait for tests to complete (they make network requests)
-      await demoPage.waitForTimeout(15000);
-
-      // Check summary is visible
-      const summary = await demoPage.locator("#summary");
-      await expect(summary).toBeVisible();
-
-      // Check that tests ran
-      const summaryCount = await demoPage.locator("#summaryCount").textContent();
-      expect(summaryCount).toMatch(/\d+\/\d+/);
-
-      // At least extension detection and mode tests should pass
-      const passedTests = await demoPage.locator(".test-status.pass").count();
-      expect(passedTests).toBeGreaterThan(0);
+      const statusCell = demoPage.locator(".log-item .status").first();
+      await expect(statusCell).toHaveText(/\d{3}/, { timeout: 15_000 });
+      expect(await statusCell.textContent()).toBe("200");
     } finally {
       await ctx.close();
       cleanup();

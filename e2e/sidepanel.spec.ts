@@ -37,10 +37,10 @@ const withExtension = async (): Promise<ExtensionContext> => {
   }
   const profile = prepareProfileDir();
   console.info(`[e2e] Using ${describeProfileChoice(profile)}`);
-  const headless = process.env.PW_EXT_HEADLESS === "1";
+  const headlessRequested = process.env.PW_EXT_HEADLESS !== "0";
   const context = await chromium.launchPersistentContext(profile.userDataDir, {
-    args: buildArgs(headless),
-    headless,
+    args: buildArgs(headlessRequested),
+    headless: false
   });
   const cleanup = () => cleanupProfileDir(profile);
   return { context, userDataDir: profile.userDataDir, cleanup };
@@ -132,6 +132,90 @@ test.describe("Side Panel", () => {
       await expect(sidePanelPage.locator(".title")).toBeVisible();
       const title = await sidePanelPage.locator(".title").textContent();
       expect(title).toContain("FranzAI");
+    } finally {
+      await ctx.close();
+      cleanup();
+    }
+  });
+
+  test("active tab domain updates and filters request logs", async () => {
+    const { context: ctx, cleanup, userDataDir } = await withExtension();
+    try {
+      const html = "<!DOCTYPE html><html><body>Test</body></html>";
+      await ctx.route("http://localhost:8765/**", async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "text/html",
+          body: html
+        });
+      });
+      await ctx.route("http://127.0.0.1:8765/**", async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "text/html",
+          body: html
+        });
+      });
+
+      const pageA = await ctx.newPage();
+      const pageB = await ctx.newPage();
+      await pageA.goto("http://localhost:8765/page-a");
+      await pageB.goto("http://127.0.0.1:8765/page-b");
+
+      const extensionId = await findExtensionId(ctx, userDataDir);
+      const sidePanelUrl = `chrome-extension://${extensionId}/sidepanel/index.html`;
+      const sidePanelPage = await ctx.newPage();
+      await sidePanelPage.goto(sidePanelUrl, { waitUntil: "load", timeout: 15_000 });
+
+      await sidePanelPage.evaluate(async () => {
+        await chrome.runtime.sendMessage({ type: "FRANZAI_CLEAR_LOGS" });
+        await chrome.runtime.sendMessage({
+          type: "FRANZAI_SET_DOMAIN_ENABLED",
+          payload: { domain: "localhost", enabled: true }
+        });
+        await chrome.runtime.sendMessage({
+          type: "FRANZAI_SET_DOMAIN_ENABLED",
+          payload: { domain: "127.0.0.1", enabled: true }
+        });
+      });
+
+      await pageA.bringToFront();
+      const hasFranzaiA = await waitForFranzai(pageA, 5000);
+      expect(hasFranzaiA).toBe(true);
+      await pageA.evaluate(async () => {
+        const franzai = (window as unknown as { franzai?: { fetch: typeof fetch } }).franzai;
+        if (!franzai) throw new Error("franzai missing");
+        await franzai.fetch("https://httpbin.org/get?source=localhost");
+      });
+
+      await pageB.bringToFront();
+      const hasFranzaiB = await waitForFranzai(pageB, 5000);
+      expect(hasFranzaiB).toBe(true);
+      await pageB.evaluate(async () => {
+        const franzai = (window as unknown as { franzai?: { fetch: typeof fetch } }).franzai;
+        if (!franzai) throw new Error("franzai missing");
+        await franzai.fetch("https://httpbin.org/get?source=127.0.0.1");
+      });
+
+      await pageA.bringToFront();
+      await sidePanelPage.waitForFunction(
+        () => document.getElementById("domainName")?.textContent === "localhost"
+      );
+      await sidePanelPage.waitForFunction(
+        () => document.getElementById("requestCount")?.textContent === "1"
+      );
+      const countA = await sidePanelPage.locator("#requestCount").textContent();
+      expect(countA).toBe("1");
+
+      await pageB.bringToFront();
+      await sidePanelPage.waitForFunction(
+        () => document.getElementById("domainName")?.textContent === "127.0.0.1"
+      );
+      await sidePanelPage.waitForFunction(
+        () => document.getElementById("requestCount")?.textContent === "1"
+      );
+      const countB = await sidePanelPage.locator("#requestCount").textContent();
+      expect(countB).toBe("1");
     } finally {
       await ctx.close();
       cleanup();

@@ -62,10 +62,10 @@ const withExtension = async (): Promise<ExtensionContext> => {
   }
   const profile = prepareProfileDir();
   console.info(`[e2e] Using ${describeProfileChoice(profile)}`);
-  const headless = process.env.PW_EXT_HEADLESS === "1";
+  const headlessRequested = process.env.PW_EXT_HEADLESS !== "0";
   const context = await chromium.launchPersistentContext(profile.userDataDir, {
-    args: buildArgs(headless),
-    headless,
+    args: buildArgs(headlessRequested),
+    headless: false
   });
   const cleanup = () => cleanupProfileDir(profile);
   const extensionId = await findExtensionId(context, profile.userDataDir);
