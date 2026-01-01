@@ -19,6 +19,12 @@ import {
 import { PAGE_MSG } from "./shared/messages";
 import { createLogger } from "./shared/logger";
 import { makeId } from "./shared/ids";
+import {
+  applyDomainEnabledUpdate,
+  getCachedDomainEnabled,
+  initDomainStatusCache,
+  setDomainStatus
+} from "./shared/domainCache";
 
 // =============================================================================
 // IMMEDIATE CAPTURE - Must happen before any other code can run
@@ -108,12 +114,8 @@ type FranzAIBridge = {
 // Domain Status Cache
 // =============================================================================
 
-let cachedDomainStatus: BridgeStatus | null = null;
+const domainStatusCache = initDomainStatusCache();
 let domainStatusPromise: Promise<BridgeStatus> | null = null;
-
-function getCachedDomainEnabled(): boolean | null {
-  return cachedDomainStatus?.domainEnabled ?? null;
-}
 
 async function fetchDomainStatus(): Promise<BridgeStatus> {
   // If already fetching, return existing promise
@@ -133,7 +135,7 @@ async function fetchDomainStatus(): Promise<BridgeStatus> {
         ready: false,
         reason: "Timeout waiting for status"
       };
-      cachedDomainStatus = fallback;
+      setDomainStatus(domainStatusCache, fallback);
       resolve(fallback);
     }, 3000);
 
@@ -146,7 +148,7 @@ async function fetchDomainStatus(): Promise<BridgeStatus> {
 
       clearTimeout(timeoutId);
       window.removeEventListener("message", onMessage);
-      cachedDomainStatus = data.payload.status;
+      setDomainStatus(domainStatusCache, data.payload.status);
       resolve(data.payload.status);
     };
 
@@ -174,16 +176,10 @@ window.addEventListener("message", (ev) => {
   if (!data || data.source !== BRIDGE_SOURCE) return;
   if (data.type !== PAGE_MSG.DOMAIN_ENABLED_UPDATE) return;
 
-  log.info("DOMAIN_ENABLED_UPDATE received:", data.payload?.enabled, "cache exists:", !!cachedDomainStatus);
-
-  // Update cache when domain status changes
-  if (cachedDomainStatus) {
-    cachedDomainStatus.domainEnabled = data.payload?.enabled ?? false;
-    cachedDomainStatus.domainSource = (data.payload?.source as "user" | "meta" | "default") ?? "default";
-    log.info("Cache updated, domainEnabled now:", cachedDomainStatus.domainEnabled);
-  } else {
-    log.warn("Cannot update domain status - cache not initialized yet");
-  }
+  const enabled = data.payload?.enabled ?? false;
+  log.info("DOMAIN_ENABLED_UPDATE received:", enabled, "cache status:", !!domainStatusCache.status);
+  applyDomainEnabledUpdate(domainStatusCache, data.payload ?? {});
+  log.info("Domain enabled cache updated:", getCachedDomainEnabled(domainStatusCache));
 });
 
 const REQUEST_META = Symbol.for("franzaiBridgeMeta");
@@ -513,8 +509,8 @@ const franzai: FranzAIBridge = {
 
   async getStatus(): Promise<BridgeStatus> {
     // Return cached status if available and fresh
-    if (cachedDomainStatus) {
-      return cachedDomainStatus;
+    if (domainStatusCache.status) {
+      return domainStatusCache.status;
     }
     // Fetch fresh status from background
     return fetchDomainStatus();
@@ -622,7 +618,7 @@ async function hookedFetch(input: RequestInfo | URL, init?: BridgeInit): Promise
   }
 
   // Check if domain is enabled (use cached value if available for performance)
-  const cachedEnabled = getCachedDomainEnabled();
+  const cachedEnabled = getCachedDomainEnabled(domainStatusCache);
   log.info("hookedFetch check - cachedEnabled:", cachedEnabled);
   if (cachedEnabled === false) {
     // Domain is explicitly disabled - bypass bridge entirely
