@@ -1552,6 +1552,14 @@ qs<HTMLButtonElement>("btnBackToRequests").onclick = () => switchTab("requests")
 qs<HTMLButtonElement>("btnBackFromDomains").onclick = () => switchTab("requests");
 qs<HTMLButtonElement>("btnBackToSettings").onclick = () => switchTab("settings");
 qs<HTMLElement>("advancedLink").onclick = () => switchTab("advanced");
+const logoBtn = qs<HTMLElement>("btnLogo");
+logoBtn.onclick = () => switchTab("requests");
+logoBtn.onkeydown = (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    switchTab("requests");
+  }
+};
 
 // Domain toggle in header
 const domainEnabledCheckbox = document.getElementById("domainEnabled") as HTMLInputElement | null;
