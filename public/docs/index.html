@@ -302,10 +302,10 @@ console.<span class="function">log</span>(data.choices[0].message.content);</cod
     <p>Check if the extension is installed and ready.</p>
 <pre><code><span class="keyword">const</span> { ok, version } = <span class="keyword">await</span> window.franzai.<span class="function">ping</span>();
 <span class="comment">// ok: true if extension is ready</span>
-<span class="comment">// version: string like "2.0.28"</span></code></pre>
+<span class="comment">// version: string like "2.0.53"</span></code></pre>
 
     <h3>window.franzai.fetch(url, options)</h3>
-    <p>Explicit bridge call. Same as regular fetch() but always routes through the extension.</p>
+    <p>Explicit bridge call. Same as regular fetch() but always routes through the extension (ignores per-request <code>franzai.mode</code> overrides). Use this to force the bridge even if the domain toggle is off.</p>
 <pre><code><span class="keyword">const</span> response = <span class="keyword">await</span> window.franzai.<span class="function">fetch</span>(
   <span class="string">'https://api.openai.com/v1/chat/completions'</span>,
   { method: <span class="string">'POST'</span>, body: <span class="string">'...'</span> }
@@ -325,7 +325,45 @@ console.<span class="function">log</span>(data.choices[0].message.content);</cod
     <p>Get current bridge mode.</p>
 <pre><code><span class="keyword">const</span> mode = window.franzai.<span class="function">getMode</span>(); <span class="comment">// 'auto' | 'always' | 'off'</span></code></pre>
 
+    <h3>window.franzai.version</h3>
+    <p>Current bridge version string (same as <code>ping()</code>).</p>
+<pre><code><span class="keyword">const</span> version = window.franzai.version; <span class="comment">// "2.0.53"</span></code></pre>
+
+    <h3>window.franzai.isKeySet(keyName)</h3>
+    <p>Check if a key is configured in the extension (does not expose the key).</p>
+<pre><code><span class="keyword">const</span> hasKey = <span class="keyword">await</span> window.franzai.<span class="function">isKeySet</span>(<span class="string">'OPENAI_API_KEY'</span>);</code></pre>
+
+    <h3>window.franzai.getStatus()</h3>
+    <p>Get bridge readiness for the current domain.</p>
+    <table>
+      <tr><th>Field</th><th>Description</th></tr>
+      <tr><td><code>installed</code></td><td>Extension present</td></tr>
+      <tr><td><code>version</code></td><td>Bridge version string</td></tr>
+      <tr><td><code>domainEnabled</code></td><td>Domain toggle state</td></tr>
+      <tr><td><code>domainSource</code></td><td><code>user</code> | <code>meta</code> | <code>default</code></td></tr>
+      <tr><td><code>originAllowed</code></td><td>Origin policy check (if enforced)</td></tr>
+      <tr><td><code>hasApiKeys</code></td><td>At least one API key configured</td></tr>
+      <tr><td><code>ready</code></td><td>Bridge ready to intercept</td></tr>
+      <tr><td><code>reason</code></td><td>Human-readable status message</td></tr>
+    </table>
+<pre><code><span class="keyword">const</span> status = <span class="keyword">await</span> window.franzai.<span class="function">getStatus</span>();</code></pre>
+
+    <h3>Per-request mode override (fetch / Request)</h3>
+    <p>Override bridge routing for a single request when using <code>window.fetch</code>.</p>
+    <p><strong>Note:</strong> This does not affect <code>window.franzai.fetch</code>, which always bridges.</p>
+<pre><code><span class="comment">// One-off bypass</span>
+<span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">'/api/data'</span>, { franzai: { mode: <span class="string">'off'</span> } });
+
+<span class="comment">// Or via Request</span>
+<span class="keyword">const</span> req = <span class="keyword">new</span> <span class="function">Request</span>(<span class="string">'/api/data'</span>, { franzai: { mode: <span class="string">'off'</span> } });
+<span class="keyword">await</span> <span class="function">fetch</span>(req);</code></pre>
+
     <h2>Configuration</h2>
+
+    <h3>Domain enablement</h3>
+    <p>The bridge only intercepts on domains you enable in the extension's Domains tab. You can also enable a domain by adding this meta tag to your page:</p>
+<pre><code>&lt;meta name="franzai-bridge" content="enabled"&gt;</code></pre>
+    <p>Valid values: <code>enabled</code>, <code>enabled-by-default</code>, <code>true</code>. Meta-enabled domains show up with source <code>meta</code>.</p>
 
     <h3>ENV Variables (API Keys)</h3>
     <p>Add API keys in the extension's Settings panel. Each key has three properties:</p>
@@ -427,7 +465,7 @@ console.<span class="function">log</span>(reply);</code></pre>
       <tr><th>Problem</th><th>Solution</th></tr>
       <tr><td>Extension not detected</td><td>Reload page, check extension is enabled in chrome://extensions</td></tr>
       <tr><td>API key not working</td><td>Check key name matches exactly (e.g., <code>OPENAI_API_KEY</code>)</td></tr>
-      <tr><td>"Page origin not allowed"</td><td>Add your page URL to Allowed Origins in Settings</td></tr>
+      <tr><td>"Bridge disabled for this domain"</td><td>Enable the domain in the Domains tab or add <code>&lt;meta name="franzai-bridge" content="enabled"&gt;</code> to your page</td></tr>
       <tr><td>"Destination not allowed"</td><td>Add the API domain to Allowed Destinations in Settings</td></tr>
       <tr><td>401 Unauthorized</td><td>API key is invalid or expired</td></tr>
       <tr><td>429 Rate Limited</td><td>Too many requests, wait and retry</td></tr>
@@ -435,7 +473,8 @@ console.<span class="function">log</span>(reply);</code></pre>
 
     <h2>Limitations</h2>
     <ul>
-      <li><strong>No streaming</strong> - Responses are fully buffered (5 MB limit)</li>
+      <li><strong>No streaming</strong> - Responses are buffered and returned as a single payload; large responses can fail due to Chrome message size limits</li>
+      <li><strong>Request body limit</strong> - Requests are capped at 5 MB</li>
       <li><strong>No WebSocket</strong> - HTTP fetch only</li>
       <li><strong>Chrome 111+</strong> - Uses <code>world: "MAIN"</code> for race-condition-free hook installation</li>
       <li><strong>Latency</strong> - Extension messaging adds ~5-50ms</li>
@@ -619,12 +658,12 @@ Check if the extension is installed and ready.
 ```javascript
 const { ok, version } = await window.franzai.ping();
 // ok: true if extension is ready
-// version: string like "2.0.28"
+// version: string like "2.0.53"
 ```
 
 ### window.franzai.fetch(url, options)
 
-Explicit bridge call. Same as regular fetch() but always routes through the extension.
+Explicit bridge call. Same as regular fetch() but always routes through the extension (ignores per-request `franzai.mode` overrides). Use this to force the bridge even if the domain toggle is off.
 
 ```javascript
 const response = await window.franzai.fetch(
@@ -655,7 +694,66 @@ Get current bridge mode.
 const mode = window.franzai.getMode(); // 'auto' | 'always' | 'off'
 ```
 
+### window.franzai.version
+
+Current bridge version string (same as `ping()`).
+
+```javascript
+const version = window.franzai.version; // "2.0.53"
+```
+
+### window.franzai.isKeySet(keyName)
+
+Check if a key is configured in the extension (does not expose the key).
+
+```javascript
+const hasKey = await window.franzai.isKeySet('OPENAI_API_KEY');
+```
+
+### window.franzai.getStatus()
+
+Get bridge readiness for the current domain.
+
+| Field | Description |
+|-------|-------------|
+| `installed` | Extension present |
+| `version` | Bridge version string |
+| `domainEnabled` | Domain toggle state |
+| `domainSource` | `user` \| `meta` \| `default` |
+| `originAllowed` | Origin policy check (if enforced) |
+| `hasApiKeys` | At least one API key configured |
+| `ready` | Bridge ready to intercept |
+| `reason` | Human-readable status message |
+
+```javascript
+const status = await window.franzai.getStatus();
+```
+
+### Per-request mode override (fetch / Request)
+
+Override bridge routing for a single request when using `window.fetch`.
+**Note:** This does not affect `window.franzai.fetch`, which always bridges.
+
+```javascript
+// One-off bypass
+await fetch('/api/data', { franzai: { mode: 'off' } });
+
+// Or via Request
+const req = new Request('/api/data', { franzai: { mode: 'off' } });
+await fetch(req);
+```
+
 ## Configuration
+
+### Domain enablement
+
+The bridge only intercepts on domains you enable in the extension's Domains tab. You can also enable a domain by adding this meta tag to your page:
+
+```html
+<meta name="franzai-bridge" content="enabled">
+```
+
+Valid values: `enabled`, `enabled-by-default`, `true`. Meta-enabled domains show up with source `meta`.
 
 ### ENV Variables (API Keys)
 
@@ -761,14 +859,15 @@ async function safeChat(message) {
 |---------|----------|
 | Extension not detected | Reload page, check extension is enabled in chrome://extensions |
 | API key not working | Check key name matches exactly (e.g., `OPENAI_API_KEY`) |
-| "Page origin not allowed" | Add your page URL to Allowed Origins in Settings |
+| "Bridge disabled for this domain" | Enable the domain in the Domains tab or add `<meta name="franzai-bridge" content="enabled">` to your page |
 | "Destination not allowed" | Add the API domain to Allowed Destinations in Settings |
 | 401 Unauthorized | API key is invalid or expired |
 | 429 Rate Limited | Too many requests, wait and retry |
 
 ## Limitations
 
-- **No streaming** - Responses are fully buffered (5 MB limit)
+- **No streaming** - Responses are buffered and returned as a single payload; large responses can fail due to Chrome message size limits
+- **Request body limit** - Requests are capped at 5 MB
 - **No WebSocket** - HTTP fetch only
 - **Chrome 111+** - Uses `world: "MAIN"` for race-condition-free hook installation
 - **Latency** - Extension messaging adds ~5-50ms
