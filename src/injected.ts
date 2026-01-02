@@ -885,19 +885,26 @@ async function hookedFetch(input: RequestInfo | URL, init?: BridgeInit): Promise
   }
 
   // Check if domain is enabled (use cached value if available for performance)
-  const cachedEnabled = getCachedDomainEnabled(domainStatusCache);
-  log.info("hookedFetch check - cachedEnabled:", cachedEnabled);
-  if (cachedEnabled === false) {
-    // Domain is explicitly disabled - bypass bridge entirely
-    log.info("Domain disabled, using nativeFetch");
-    return nativeFetch(input as RequestInfo, init as RequestInit | undefined);
+  let domainEnabled = getCachedDomainEnabled(domainStatusCache);
+  log.info("hookedFetch check - cachedEnabled:", domainEnabled);
+
+  // If no cached status yet, wait for the check before deciding
+  if (domainEnabled === null) {
+    try {
+      await fetchDomainStatus();
+      domainEnabled = getCachedDomainEnabled(domainStatusCache);
+      log.info("hookedFetch after fetch - domainEnabled:", domainEnabled);
+    } catch {
+      // On error, default to native fetch (don't route through bridge if we can't verify)
+      log.info("Domain status fetch failed, using nativeFetch");
+      return nativeFetch(input as RequestInfo, init as RequestInit | undefined);
+    }
   }
 
-  // If no cached status yet, fetch it asynchronously but don't block first request
-  // The first request goes through bridge (if extension enabled it), subsequent ones use cache
-  if (cachedEnabled === null) {
-    // Start fetching status in background (don't await)
-    fetchDomainStatus().catch(() => { /* ignore errors */ });
+  // If domain is not enabled, use native fetch
+  if (domainEnabled !== true) {
+    log.info("Domain not enabled, using nativeFetch");
+    return nativeFetch(input as RequestInfo, init as RequestInit | undefined);
   }
 
   try {
