@@ -91,3 +91,35 @@ export type LogEntry = {
   elapsedMs?: number;
   error?: string;
 };
+
+// Google OAuth types
+export type GoogleAuthState = {
+  authenticated: boolean;
+  email: string | null;
+  scopes: string[];
+  accessToken: string | null;
+  tokenExpiresAt: number | null;  // Unix timestamp (ms)
+};
+
+export type GooglePublicAuthState = {
+  authenticated: boolean;
+  email: string | null;
+  scopes: string[];
+};
+
+export type GoogleFetchRequest = {
+  requestId: string;
+  url: string;
+  init?: FetchInitLite;
+  requiredScopes?: string[];
+};
+
+export type GoogleFetchResponse = {
+  requestId: string;
+  ok: boolean;
+  status: number;
+  statusText: string;
+  headers: Dict<string>;
+  bodyText: string;
+  error?: string;
+};

@@ -9,7 +9,15 @@
  * into the page context. No manual script injection needed here.
  */
 
-import type { BridgeStatus, FetchEnvelope, FetchRequestFromPage, FetchResponseToPage, PageFetchRequest } from "./shared/types";
+import type {
+  BridgeStatus,
+  FetchEnvelope,
+  FetchRequestFromPage,
+  FetchResponseToPage,
+  GoogleFetchRequest,
+  GooglePublicAuthState,
+  PageFetchRequest
+} from "./shared/types";
 import { BRIDGE_SOURCE, BRIDGE_TIMEOUT_MS } from "./shared/constants";
 import { BG_EVT, BG_MSG, PAGE_MSG, type BgEvent, type PageToContentMessage } from "./shared/messages";
 import { createLogger } from "./shared/logger";
@@ -76,6 +84,17 @@ port.onMessage.addListener(async (evt: BgEvent) => {
     } catch (e) {
       log.warn("Failed to fetch updated key list", e);
     }
+  }
+
+  if (evt.type === BG_EVT.GOOGLE_AUTH_UPDATED) {
+    window.postMessage(
+      {
+        source: BRIDGE_SOURCE,
+        type: PAGE_MSG.GOOGLE_AUTH_UPDATE,
+        payload: evt.payload
+      },
+      "*"
+    );
   }
 });
 
@@ -315,5 +334,121 @@ window.addEventListener("message", async (event) => {
         "*"
       );
     }
+    return;
+  }
+
+  // =========================================================================
+  // Google OAuth message relays
+  // =========================================================================
+
+  if (data.type === PAGE_MSG.GOOGLE_AUTH_REQUEST) {
+    const { authId, scopes } = data.payload;
+    try {
+      const resp = await sendRuntimeMessage<
+        { type: typeof BG_MSG.GOOGLE_AUTH; payload: { scopes: string[] } },
+        { ok: boolean; state: GooglePublicAuthState }
+      >({ type: BG_MSG.GOOGLE_AUTH, payload: { scopes } });
+
+      window.postMessage({
+        source: BRIDGE_SOURCE,
+        type: PAGE_MSG.GOOGLE_AUTH_RESPONSE,
+        payload: { authId, success: resp.ok, state: resp.state }
+      }, "*");
+    } catch (e) {
+      window.postMessage({
+        source: BRIDGE_SOURCE,
+        type: PAGE_MSG.GOOGLE_AUTH_RESPONSE,
+        payload: { authId, success: false, error: String(e) }
+      }, "*");
+    }
+    return;
+  }
+
+  if (data.type === PAGE_MSG.GOOGLE_LOGOUT_REQUEST) {
+    const { logoutId } = data.payload;
+    try {
+      await sendRuntimeMessage({ type: BG_MSG.GOOGLE_LOGOUT });
+      window.postMessage({
+        source: BRIDGE_SOURCE,
+        type: PAGE_MSG.GOOGLE_LOGOUT_RESPONSE,
+        payload: { logoutId, success: true }
+      }, "*");
+    } catch {
+      window.postMessage({
+        source: BRIDGE_SOURCE,
+        type: PAGE_MSG.GOOGLE_LOGOUT_RESPONSE,
+        payload: { logoutId, success: false }
+      }, "*");
+    }
+    return;
+  }
+
+  if (data.type === PAGE_MSG.GOOGLE_STATE_REQUEST) {
+    const { stateId } = data.payload;
+    try {
+      const resp = await sendRuntimeMessage<
+        { type: typeof BG_MSG.GOOGLE_GET_STATE },
+        { ok: boolean; state: GooglePublicAuthState }
+      >({ type: BG_MSG.GOOGLE_GET_STATE });
+
+      window.postMessage({
+        source: BRIDGE_SOURCE,
+        type: PAGE_MSG.GOOGLE_STATE_RESPONSE,
+        payload: { stateId, state: resp.state }
+      }, "*");
+    } catch {
+      window.postMessage({
+        source: BRIDGE_SOURCE,
+        type: PAGE_MSG.GOOGLE_STATE_RESPONSE,
+        payload: { stateId, state: { authenticated: false, email: null, scopes: [] } }
+      }, "*");
+    }
+    return;
+  }
+
+  if (data.type === PAGE_MSG.GOOGLE_HAS_SCOPES_REQUEST) {
+    const { scopesId, scopes } = data.payload;
+    try {
+      const resp = await sendRuntimeMessage<
+        { type: typeof BG_MSG.GOOGLE_HAS_SCOPES; payload: { scopes: string[] } },
+        { ok: boolean; hasScopes: boolean }
+      >({ type: BG_MSG.GOOGLE_HAS_SCOPES, payload: { scopes } });
+
+      window.postMessage({
+        source: BRIDGE_SOURCE,
+        type: PAGE_MSG.GOOGLE_HAS_SCOPES_RESPONSE,
+        payload: { scopesId, hasScopes: resp.hasScopes }
+      }, "*");
+    } catch {
+      window.postMessage({
+        source: BRIDGE_SOURCE,
+        type: PAGE_MSG.GOOGLE_HAS_SCOPES_RESPONSE,
+        payload: { scopesId, hasScopes: false }
+      }, "*");
+    }
+    return;
+  }
+
+  if (data.type === PAGE_MSG.GOOGLE_FETCH_REQUEST) {
+    const req = data.payload as GoogleFetchRequest;
+    try {
+      const resp = await sendRuntimeMessage<
+        { type: typeof BG_MSG.GOOGLE_FETCH; payload: GoogleFetchRequest },
+        { ok: boolean; status: number; statusText: string; headers: Record<string, string>; bodyText: string; requestId: string; error?: string }
+      >({ type: BG_MSG.GOOGLE_FETCH, payload: req });
+
+      window.postMessage({
+        source: BRIDGE_SOURCE,
+        type: PAGE_MSG.GOOGLE_FETCH_RESPONSE,
+        payload: resp
+      }, "*");
+    } catch (e) {
+      window.postMessage({
+        source: BRIDGE_SOURCE,
+        type: PAGE_MSG.GOOGLE_FETCH_RESPONSE,
+        payload: { requestId: req.requestId, ok: false, status: 0, statusText: "Error", headers: {}, bodyText: "", error: String(e) }
+      }, "*");
+    }
+    return;
   }
 });

@@ -1,6 +1,6 @@
 {
   "name": "franzai-bridge-v2",
-  "version": "2.0.57",
+  "version": "2.0.59",
   "private": true,
   "type": "module",
   "description": "FranzAI Bridge V2 - MV3 extension that routes cross-origin fetch through a secure background bridge.",

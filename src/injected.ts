@@ -9,7 +9,7 @@
  * guaranteeing we can hook fetch before any page code executes.
  */
 
-import type { BridgeStatus, FetchEnvelope, FetchInitLite, PageFetchRequest } from "./shared/types";
+import type { BridgeStatus, FetchEnvelope, FetchInitLite, GoogleFetchRequest, GoogleFetchResponse, GooglePublicAuthState, PageFetchRequest } from "./shared/types";
 import {
   BRIDGE_SOURCE,
   BRIDGE_TIMEOUT_MS,
@@ -100,6 +100,17 @@ type LiteRequest = {
   signal?: AbortSignal;
 };
 
+type GoogleAPI = {
+  auth(scopes?: string | string[]): Promise<GooglePublicAuthState>;
+  logout(): Promise<void>;
+  fetch(url: string, init?: RequestInit): Promise<Response>;
+  hasScopes(scopes: string | string[]): Promise<boolean>;
+  getState(): Promise<GooglePublicAuthState>;
+  readonly isAuthenticated: boolean;
+  readonly email: string | null;
+  readonly scopes: string[];
+};
+
 type FranzAIBridge = {
   version: string;
   fetch(input: RequestInfo | URL, init?: BridgeInit): Promise<Response>;
@@ -110,6 +121,7 @@ type FranzAIBridge = {
   hasApiKey(keyName: string): Promise<boolean>;
   keys: string[];
   getStatus(): Promise<BridgeStatus>;
+  google: GoogleAPI;
 };
 
 // =============================================================================
@@ -243,6 +255,28 @@ window.addEventListener("message", (ev) => {
 
   if (Array.isArray(data.payload?.keys)) {
     updateKeyCache(data.payload.keys);
+  }
+});
+
+// =============================================================================
+// Google OAuth State Cache
+// =============================================================================
+
+let googleAuthState: GooglePublicAuthState = { authenticated: false, email: null, scopes: [] };
+
+function updateGoogleAuthState(state: GooglePublicAuthState) {
+  googleAuthState = state;
+}
+
+window.addEventListener("message", (ev) => {
+  if (ev.source !== window) return;
+  const data = ev.data as { source?: string; type?: string; payload?: GooglePublicAuthState };
+  if (!data || data.source !== BRIDGE_SOURCE) return;
+  if (data.type !== PAGE_MSG.GOOGLE_AUTH_UPDATE) return;
+
+  if (data.payload) {
+    updateGoogleAuthState(data.payload);
+    log.info("Google auth state updated:", data.payload.authenticated, data.payload.email);
   }
 });
 
@@ -676,6 +710,170 @@ const franzai: FranzAIBridge = {
       statusText: r.statusText,
       headers: r.headers
     });
+  },
+
+  // Google OAuth API
+  google: {
+    async auth(scopes?: string | string[]): Promise<GooglePublicAuthState> {
+      const scopeArray = scopes ? (Array.isArray(scopes) ? scopes : [scopes]) : [];
+      const authId = makeId("gauth");
+
+      return new Promise((resolve) => {
+        const timeoutId = window.setTimeout(() => {
+          window.removeEventListener("message", onMessage);
+          resolve({ authenticated: false, email: null, scopes: [] });
+        }, 30000);
+
+        const onMessage = (ev: MessageEvent) => {
+          if (ev.source !== window) return;
+          const data = ev.data as { source?: string; type?: string; payload?: { authId: string; success: boolean; state?: GooglePublicAuthState } };
+          if (!data || data.source !== BRIDGE_SOURCE || data.type !== PAGE_MSG.GOOGLE_AUTH_RESPONSE) return;
+          if (data.payload?.authId !== authId) return;
+
+          clearTimeout(timeoutId);
+          window.removeEventListener("message", onMessage);
+          const state = data.payload.state ?? { authenticated: false, email: null, scopes: [] };
+          updateGoogleAuthState(state);
+          resolve(state);
+        };
+
+        window.addEventListener("message", onMessage);
+        window.postMessage({ source: BRIDGE_SOURCE, type: PAGE_MSG.GOOGLE_AUTH_REQUEST, payload: { authId, scopes: scopeArray } }, "*");
+      });
+    },
+
+    async logout(): Promise<void> {
+      const logoutId = makeId("glogout");
+
+      return new Promise((resolve) => {
+        const timeoutId = window.setTimeout(() => {
+          window.removeEventListener("message", onMessage);
+          resolve();
+        }, 5000);
+
+        const onMessage = (ev: MessageEvent) => {
+          if (ev.source !== window) return;
+          const data = ev.data as { source?: string; type?: string; payload?: { logoutId: string } };
+          if (!data || data.source !== BRIDGE_SOURCE || data.type !== PAGE_MSG.GOOGLE_LOGOUT_RESPONSE) return;
+          if (data.payload?.logoutId !== logoutId) return;
+
+          clearTimeout(timeoutId);
+          window.removeEventListener("message", onMessage);
+          updateGoogleAuthState({ authenticated: false, email: null, scopes: [] });
+          resolve();
+        };
+
+        window.addEventListener("message", onMessage);
+        window.postMessage({ source: BRIDGE_SOURCE, type: PAGE_MSG.GOOGLE_LOGOUT_REQUEST, payload: { logoutId } }, "*");
+      });
+    },
+
+    async fetch(url: string, init?: RequestInit): Promise<Response> {
+      const requestId = makeId("gfetch");
+      const liteInit = init ? {
+        method: init.method,
+        headers: headersToLite(init.headers),
+        body: init.body ? await bodyToPayload(init.body as BodyInit, new Headers(init.headers)) : undefined
+      } : undefined;
+
+      const req: GoogleFetchRequest = { requestId, url, init: liteInit };
+
+      return new Promise((resolve, reject) => {
+        const timeoutId = window.setTimeout(() => {
+          window.removeEventListener("message", onMessage);
+          reject(new Error("Google fetch timed out"));
+        }, BRIDGE_TIMEOUT_MS);
+
+        const onMessage = (ev: MessageEvent) => {
+          if (ev.source !== window) return;
+          const data = ev.data as { source?: string; type?: string; payload?: GoogleFetchResponse };
+          if (!data || data.source !== BRIDGE_SOURCE || data.type !== PAGE_MSG.GOOGLE_FETCH_RESPONSE) return;
+          if (data.payload?.requestId !== requestId) return;
+
+          clearTimeout(timeoutId);
+          window.removeEventListener("message", onMessage);
+
+          const resp = data.payload;
+          if (!resp.ok && resp.error) {
+            reject(new Error(resp.error));
+            return;
+          }
+
+          resolve(new Response(resp.bodyText, {
+            status: resp.status,
+            statusText: resp.statusText,
+            headers: resp.headers
+          }));
+        };
+
+        window.addEventListener("message", onMessage);
+        window.postMessage({ source: BRIDGE_SOURCE, type: PAGE_MSG.GOOGLE_FETCH_REQUEST, payload: req }, "*");
+      });
+    },
+
+    async hasScopes(scopes: string | string[]): Promise<boolean> {
+      const scopeArray = Array.isArray(scopes) ? scopes : [scopes];
+      const scopesId = makeId("gscopes");
+
+      return new Promise((resolve) => {
+        const timeoutId = window.setTimeout(() => {
+          window.removeEventListener("message", onMessage);
+          resolve(false);
+        }, 5000);
+
+        const onMessage = (ev: MessageEvent) => {
+          if (ev.source !== window) return;
+          const data = ev.data as { source?: string; type?: string; payload?: { scopesId: string; hasScopes: boolean } };
+          if (!data || data.source !== BRIDGE_SOURCE || data.type !== PAGE_MSG.GOOGLE_HAS_SCOPES_RESPONSE) return;
+          if (data.payload?.scopesId !== scopesId) return;
+
+          clearTimeout(timeoutId);
+          window.removeEventListener("message", onMessage);
+          resolve(data.payload.hasScopes);
+        };
+
+        window.addEventListener("message", onMessage);
+        window.postMessage({ source: BRIDGE_SOURCE, type: PAGE_MSG.GOOGLE_HAS_SCOPES_REQUEST, payload: { scopesId, scopes: scopeArray } }, "*");
+      });
+    },
+
+    async getState(): Promise<GooglePublicAuthState> {
+      const stateId = makeId("gstate");
+
+      return new Promise((resolve) => {
+        const timeoutId = window.setTimeout(() => {
+          window.removeEventListener("message", onMessage);
+          resolve(googleAuthState);
+        }, 5000);
+
+        const onMessage = (ev: MessageEvent) => {
+          if (ev.source !== window) return;
+          const data = ev.data as { source?: string; type?: string; payload?: { stateId: string; state: GooglePublicAuthState } };
+          if (!data || data.source !== BRIDGE_SOURCE || data.type !== PAGE_MSG.GOOGLE_STATE_RESPONSE) return;
+          if (data.payload?.stateId !== stateId) return;
+
+          clearTimeout(timeoutId);
+          window.removeEventListener("message", onMessage);
+          updateGoogleAuthState(data.payload.state);
+          resolve(data.payload.state);
+        };
+
+        window.addEventListener("message", onMessage);
+        window.postMessage({ source: BRIDGE_SOURCE, type: PAGE_MSG.GOOGLE_STATE_REQUEST, payload: { stateId } }, "*");
+      });
+    },
+
+    get isAuthenticated(): boolean {
+      return googleAuthState.authenticated;
+    },
+
+    get email(): string | null {
+      return googleAuthState.email;
+    },
+
+    get scopes(): string[] {
+      return [...googleAuthState.scopes];
+    }
   }
 };
 
@@ -798,6 +996,11 @@ function installRequestHook() {
   // Prime key list (best-effort). This never exposes values.
   refreshKeyNames().catch(() => {
     // Ignore refresh failures; keys can be requested later.
+  });
+
+  // Prime Google auth state (best-effort). This only gets public state.
+  franzai.google.getState().catch(() => {
+    // Ignore refresh failures; state can be requested later.
   });
 
   // =============================================================================
