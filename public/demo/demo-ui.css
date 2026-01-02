@@ -1,0 +1,162 @@
+/* Demo UI Component Styles */
+
+/* Collapsible Sections */
+.example-section {
+  border-bottom: 1px solid var(--border);
+}
+
+.section-header {
+  padding: 10px 12px;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  cursor: pointer;
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.section-header:hover { background: var(--panel-lighter); }
+
+.section-arrow {
+  font-size: 8px;
+  color: var(--muted);
+}
+
+.section-content {
+  padding: 8px;
+}
+
+/* Example Cards */
+.example-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.example-card:last-child { margin-bottom: 0; }
+
+.example-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+}
+
+.method-badge {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.method-badge.get { background: #e8f0fe; color: var(--method-get); }
+.method-badge.post { background: #e6f4ea; color: var(--method-post); }
+.method-badge.put { background: #fef7e0; color: var(--warning); }
+.method-badge.delete { background: #fce8e6; color: var(--error); }
+
+.example-info { flex: 1; min-width: 0; }
+.example-name { font-weight: 500; font-size: 12px; color: var(--text); margin-bottom: 2px; }
+.example-desc { font-size: 10px; color: var(--muted); line-height: 1.3; }
+
+.example-actions {
+  display: flex;
+  gap: 6px;
+  padding: 0 10px 10px;
+}
+
+/* Buttons */
+.btn {
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+.btn:hover { background: var(--panel); }
+.btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn-primary:hover { background: #1557b0; }
+.btn-sm { padding: 4px 8px; font-size: 10px; }
+
+/* Code Block */
+.code-block {
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 10px;
+  position: relative;
+}
+.code-block pre {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+  line-height: 1.5;
+}
+.copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 2px 6px;
+  font-size: 9px;
+}
+
+/* Request Log Styles */
+.log-item {
+  display: grid;
+  grid-template-columns: 45px 45px 120px 1fr 40px 40px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.log-item > div {
+  padding: 6px 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.log-item:hover { background: var(--row-hover); }
+.log-item.selected { background: var(--row-selected); }
+
+.log-item .method { font-weight: 500; }
+.log-item .method.get { color: var(--method-get); }
+.log-item .method.post { color: var(--method-post); }
+.log-item .method.put { color: var(--warning); }
+.log-item .method.delete { color: var(--error); }
+
+.status-ok { color: var(--success); }
+.status-err { color: var(--error); }
+
+.hint {
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* Detail Panel */
+#detailPanel pre {
+  margin: 0;
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+/* Scrollable panels */
+.examples-panel {
+  overflow-y: auto;
+  flex: 1;
+}
