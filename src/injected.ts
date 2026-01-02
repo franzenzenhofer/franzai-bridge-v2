@@ -449,7 +449,25 @@ function toUint8Array(buffer: ArrayBuffer): Uint8Array {
   return bytes;
 }
 
-async function bodyToPayload(body: BodyInit, headers: Headers): Promise<string | Uint8Array> {
+// Convert Uint8Array to base64 for message passing
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+// Create a BinaryBody that survives message passing
+function toBinaryBody(bytes: Uint8Array): { __binary: true; base64: string; byteLength: number } {
+  return {
+    __binary: true,
+    base64: uint8ArrayToBase64(bytes),
+    byteLength: bytes.byteLength
+  };
+}
+
+async function bodyToPayload(body: BodyInit, headers: Headers): Promise<string | { __binary: true; base64: string; byteLength: number }> {
   if (typeof body === "string") {
     enforceMaxBytes(byteLengthOfString(body));
     return body;
@@ -465,7 +483,7 @@ async function bodyToPayload(body: BodyInit, headers: Headers): Promise<string |
   if (typeof FormData !== "undefined" && body instanceof FormData) {
     const response = new Response(body);
     maybeSetContentType(headers, response.headers.get("content-type"));
-    return toUint8Array(await response.arrayBuffer());
+    return toBinaryBody(toUint8Array(await response.arrayBuffer()));
   }
 
   if (typeof Blob !== "undefined" && body instanceof Blob) {
@@ -477,22 +495,22 @@ async function bodyToPayload(body: BodyInit, headers: Headers): Promise<string |
     }
 
     maybeSetContentType(headers, body.type);
-    return toUint8Array(await body.arrayBuffer());
+    return toBinaryBody(toUint8Array(await body.arrayBuffer()));
   }
 
   if (body instanceof ArrayBuffer) {
-    return toUint8Array(body);
+    return toBinaryBody(toUint8Array(body));
   }
 
   if (ArrayBuffer.isView(body)) {
     const bytes = new Uint8Array(body.buffer, body.byteOffset, body.byteLength);
     enforceMaxBytes(bytes.byteLength);
-    return bytes;
+    return toBinaryBody(bytes);
   }
 
   if (typeof ReadableStream !== "undefined" && body instanceof ReadableStream) {
     const response = new Response(body);
-    return toUint8Array(await response.arrayBuffer());
+    return toBinaryBody(toUint8Array(await response.arrayBuffer()));
   }
 
   throw new Error("FranzAI Bridge cannot forward this body type");
@@ -501,7 +519,7 @@ async function bodyToPayload(body: BodyInit, headers: Headers): Promise<string |
 async function readRequestBody(
   request: Request,
   headers: Headers
-): Promise<string | Uint8Array | undefined> {
+): Promise<string | { __binary: true; base64: string; byteLength: number } | undefined> {
   if (!request.body) return undefined;
 
   const contentType = headers.get("content-type");
@@ -516,7 +534,7 @@ async function readRequestBody(
   }
 
   try {
-    return toUint8Array(await request.clone().arrayBuffer());
+    return toBinaryBody(toUint8Array(await request.clone().arrayBuffer()));
   } catch {
     throw new Error(
       "FranzAI Bridge cannot forward a locked or unreadable request body"

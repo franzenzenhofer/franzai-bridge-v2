@@ -1,6 +1,6 @@
 // Fetch request handler for background script
 
-import type { Dict, FetchEnvelope, FetchRequestFromPage, FetchResponseToPage, InjectionRule, LogEntry } from "../shared/types";
+import type { BinaryBody, Dict, FetchEnvelope, FetchRequestFromPage, FetchResponseToPage, InjectionRule, LogEntry } from "../shared/types";
 import { BG_EVT, type BgEvent } from "../shared/messages";
 import { appendLog, getSettings } from "../shared/storage";
 import { matchesAnyPattern, wildcardToRegExp } from "../shared/wildcard";
@@ -13,6 +13,26 @@ const log = createLogger("fetch");
 
 const inFlight = new Map<string, AbortController>();
 const abortedByPage = new Set<string>();
+
+// Check if body is a BinaryBody (base64 encoded)
+function isBinaryBody(body: unknown): body is BinaryBody {
+  return typeof body === "object" && body !== null && "__binary" in body && (body as BinaryBody).__binary === true;
+}
+
+// Decode base64 to Uint8Array
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Decode BinaryBody to Uint8Array for fetch
+function decodeBinaryBody(body: BinaryBody): Uint8Array {
+  return base64ToUint8Array(body.base64);
+}
 
 export function abortFetch(requestId: string): void {
   abortedByPage.add(requestId);
@@ -63,6 +83,7 @@ function applyInjectionRules(args: { url: URL; headers: Dict<string>; env: Dict<
 
 function previewBody(body: unknown, max: number): string {
   if (body == null) return "";
+  if (isBinaryBody(body)) return `[binary body ${body.byteLength} bytes]`;
   if (body instanceof Uint8Array) return `[binary body ${body.byteLength} bytes]`;
   if (body instanceof ArrayBuffer) return `[binary body ${body.byteLength} bytes]`;
   if (typeof body !== "string") return `[${typeof body} body omitted]`;
@@ -145,10 +166,20 @@ export async function handleFetch(
   const allRules = [...builtinProviderRules(), ...settings.injectionRules];
   applyInjectionRules({ url, headers: requestHeaders, env: settings.env, rules: allRules });
 
+  // Decode binary body if present
+  let fetchBody: BodyInit | undefined;
+  if (init.body != null) {
+    if (isBinaryBody(init.body)) {
+      fetchBody = decodeBinaryBody(init.body) as unknown as BodyInit;
+    } else {
+      fetchBody = init.body as string;
+    }
+  }
+
   const fetchInit: RequestInit = {
     method,
     headers: requestHeaders,
-    body: init.body as BodyInit | undefined,
+    body: fetchBody,
     redirect: init.redirect,
     credentials: init.credentials,
     cache: init.cache,

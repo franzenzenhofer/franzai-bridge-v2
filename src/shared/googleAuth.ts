@@ -1,7 +1,7 @@
 // Google OAuth authentication module for FranzAI Bridge
 // Uses chrome.identity for secure OAuth flow
 
-import type { GoogleAuthState, GooglePublicAuthState, Dict, FetchInitLite } from "./types";
+import type { BinaryBody, GoogleAuthState, GooglePublicAuthState, Dict, FetchInitLite } from "./types";
 import { normalizeScopeInput, scopesInclude } from "./googleScopes";
 
 const STORAGE_KEY = "google_auth";
@@ -156,14 +156,20 @@ export async function googleFetch(
   const headers = new Headers(headersInit);
   headers.set("Authorization", `Bearer ${token}`);
 
-  // Convert body - Uint8Array needs to be converted for fetch
+  // Convert body - handle BinaryBody (base64 encoded) or string
   let body: BodyInit | undefined;
   if (init?.body) {
-    if (init.body instanceof Uint8Array) {
-      // Convert Uint8Array to ArrayBuffer for fetch
-      body = init.body.buffer.slice(init.body.byteOffset, init.body.byteOffset + init.body.byteLength) as ArrayBuffer;
+    const b = init.body as string | BinaryBody;
+    if (typeof b === "object" && "__binary" in b && b.__binary === true) {
+      // Decode base64 to Uint8Array
+      const binary = atob(b.base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      body = bytes;
     } else {
-      body = init.body;
+      body = b as string;
     }
   }
 

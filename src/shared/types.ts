@@ -34,10 +34,17 @@ export type BridgeSettings = {
   maxLogs: number;
 };
 
+// Binary body representation that survives message passing
+export type BinaryBody = {
+  __binary: true;
+  base64: string;
+  byteLength: number;
+};
+
 export type FetchInitLite = {
   method?: string;
   headers?: Dict<string> | [string, string][];
-  body?: string | Uint8Array;
+  body?: string | BinaryBody;
   redirect?: RequestRedirect;
   credentials?: RequestCredentials;
   cache?: RequestCache;
