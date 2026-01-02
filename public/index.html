@@ -964,6 +964,13 @@
         </h3>
         <p>Control which pages can use the bridge and which APIs can be called. Prevent unauthorized access.</p>
       </div>
+      <div class="feature-card">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Google OAuth
+        </h3>
+        <p>Authenticate with Google and access Search Console, Analytics, and other Google APIs. Tokens stored locally, auto-refreshed.</p>
+      </div>
     </div>
   </section>
 
@@ -1009,6 +1016,21 @@
 <span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
 console.<span class="function">log</span>(data.choices[<span class="keyword">0</span>].message.content);
 <span class="comment">// API key auto-injected by FranzAI Bridge!</span></pre>
+    </div>
+
+    <h3 style="text-align: center; margin-top: 48px; color: var(--muted); font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Google APIs with OAuth</h3>
+    <div class="code-block">
+<pre><span class="comment">// Authenticate with Google (shows consent screen once)</span>
+<span class="keyword">await</span> franzai.google.<span class="function">auth</span>([<span class="string">'webmasters.readonly'</span>]);
+
+<span class="comment">// Fetch your Search Console sites</span>
+<span class="keyword">const</span> <span class="function">response</span> = <span class="keyword">await</span> franzai.google.<span class="function">fetch</span>(
+  <span class="string">"https://searchconsole.googleapis.com/webmasters/v3/sites"</span>
+);
+
+<span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
+console.<span class="function">log</span>(<span class="string">"Your sites:"</span>, data.siteEntry);
+<span class="comment">// OAuth token auto-injected, auto-refreshed!</span></pre>
     </div>
   </section>
 
@@ -1259,6 +1281,10 @@ console.<span class="function">log</span>(data.choices[<span class="keyword">0</
         <h4>What Chrome version do I need?</h4>
         <p>Chrome 111 or later. The extension uses Chrome's <code>world: "MAIN"</code> feature for guaranteed synchronous hook installation - no race conditions possible.</p>
       </div>
+      <div class="faq-item">
+        <h4>How does Google OAuth work?</h4>
+        <p>Call <code>franzai.google.auth(['webmasters.readonly'])</code> to authenticate. The extension uses Chrome's identity API to securely get OAuth tokens, which are stored locally and auto-refreshed when expired.</p>
+      </div>
     </div>
   </section>
 
@@ -1267,7 +1293,9 @@ console.<span class="function">log</span>(data.choices[<span class="keyword">0</
     <div class="links">
       <a href="https://github.com/franzenzenhofer/franzai-bridge-v2" target="_blank">GitHub</a>
       <a href="/demo/">Demo</a>
+      <a href="/docs/">Documentation</a>
       <a href="/privacy.html">Privacy Policy</a>
+      <a href="/terms.html">Terms of Service</a>
     </div>
     <div class="copyright">
       FranzAI Bridge V2 - MIT License

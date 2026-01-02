@@ -25,6 +25,8 @@
       background: var(--panel);
       border-bottom: 1px solid var(--border);
       padding: 16px 24px;
+      display: flex;
+      gap: 24px;
     }
     header a {
       color: var(--accent);
@@ -53,19 +55,21 @@
 <body>
   <header>
     <a href="/">Back to FranzAI Bridge</a>
+    <a href="/terms.html">Terms of Service</a>
   </header>
   <main>
     <h1>Privacy Policy</h1>
-    <p class="updated">Last updated: December 31, 2025</p>
+    <p class="updated">Last updated: January 2, 2026</p>
 
     <div class="highlight">
-      <strong>Summary:</strong> FranzAI Bridge stores your API keys locally in Chrome's extension storage. We do not collect, transmit, or store any of your data on external servers.
+      <strong>Summary:</strong> FranzAI Bridge stores your API keys and Google OAuth tokens locally in Chrome's extension storage. We do not collect, transmit, or store any of your data on external servers.
     </div>
 
     <h2>What Data We Collect</h2>
     <p>FranzAI Bridge collects and stores the following data <strong>locally on your device only</strong>:</p>
     <ul>
       <li><strong>API Keys:</strong> The API keys you enter (OpenAI, Anthropic, Google, Mistral, or custom keys) are stored in Chrome's extension storage.</li>
+      <li><strong>Google OAuth Tokens:</strong> If you use the Google authentication feature (<code>franzai.google.*</code>), we store your OAuth access token, refresh token, email address, and authorized scopes locally.</li>
       <li><strong>Configuration:</strong> Your settings including allowed origins, allowed destinations, and custom injection rules.</li>
       <li><strong>Request Logs:</strong> A temporary log of recent requests (up to 200 entries) is stored in memory for the request inspector. These logs are cleared when you close Chrome or click "Clear".</li>
     </ul>
@@ -73,6 +77,7 @@
     <h2>How We Use Your Data</h2>
     <ul>
       <li><strong>API Keys:</strong> Used solely to authenticate your requests to AI providers. Keys are injected into request headers by the extension and sent directly to the respective API endpoints.</li>
+      <li><strong>Google OAuth Tokens:</strong> Used solely to authenticate your requests to Google APIs (Search Console, Analytics, etc.). Tokens are automatically refreshed when expired and sent directly to Google's API endpoints.</li>
       <li><strong>Configuration:</strong> Used to determine which pages can use the bridge and which APIs can be called.</li>
       <li><strong>Request Logs:</strong> Displayed in the side panel for debugging purposes only.</li>
     </ul>
@@ -89,6 +94,7 @@
     <p>FranzAI Bridge transmits data only in the following ways:</p>
     <ul>
       <li><strong>To AI API providers:</strong> When you make a request through the bridge, your request data (including the injected API key) is sent directly to the API endpoint you specified.</li>
+      <li><strong>To Google APIs:</strong> When you use the Google authentication feature, requests are sent directly to Google's API endpoints with your OAuth token. We use Google's OAuth 2.0 for authentication.</li>
       <li><strong>No analytics:</strong> We do not send any usage data, telemetry, or analytics to any server.</li>
       <li><strong>No third parties:</strong> We do not share your data with any third parties.</li>
     </ul>
@@ -96,8 +102,20 @@
     <h2>Security</h2>
     <ul>
       <li>API keys are stored in extension storage, which is not accessible to web pages or other extensions.</li>
+      <li>Google OAuth tokens are stored securely in extension storage and automatically refreshed when expired.</li>
       <li>The extension uses allowlists to control which pages can make requests and which APIs can be called.</li>
       <li>Requests are made directly from the extension to the API provider with no intermediary servers.</li>
+    </ul>
+
+    <h2>Google Authentication</h2>
+    <p>When you use the Google authentication feature (<code>franzai.google.*</code>):</p>
+    <ul>
+      <li><strong>OAuth Flow:</strong> We use Chrome's built-in identity API (<code>chrome.identity</code>) to securely authenticate with Google.</li>
+      <li><strong>Scopes:</strong> We only request the specific permissions (scopes) needed for your use case, such as Search Console or Analytics access.</li>
+      <li><strong>Token Storage:</strong> OAuth tokens are stored locally and used only to authenticate your API requests.</li>
+      <li><strong>Token Refresh:</strong> Access tokens expire after 1 hour and are automatically refreshed using your refresh token.</li>
+      <li><strong>Revocation:</strong> You can revoke access at any time via <a href="https://myaccount.google.com/permissions">Google Account Permissions</a> or by using <code>franzai.google.logout()</code>.</li>
+      <li><strong>No Server:</strong> All authentication happens directly between your browser and Google. We have no server that sees or stores your tokens.</li>
     </ul>
 
     <h2>Your Rights</h2>
@@ -105,6 +123,7 @@
     <ul>
       <li><strong>View:</strong> All stored data is visible in the extension's side panel.</li>
       <li><strong>Delete:</strong> Use the "Reset All Settings" button to delete all stored data, or uninstall the extension.</li>
+      <li><strong>Google Logout:</strong> Use <code>franzai.google.logout()</code> to clear Google OAuth tokens, or revoke access at <a href="https://myaccount.google.com/permissions">Google Account Permissions</a>.</li>
       <li><strong>Export:</strong> Request logs can be exported as JSON from the side panel.</li>
     </ul>
 
@@ -112,7 +131,11 @@
     <p>We may update this privacy policy from time to time. Any changes will be reflected in the "Last updated" date at the top of this page.</p>
 
     <h2>Contact</h2>
-    <p>If you have questions about this privacy policy, please open an issue on our <a href="https://github.com/franzenzenhofer/franzai-bridge-v2">GitHub repository</a>.</p>
+    <p>If you have questions about this privacy policy:</p>
+    <ul>
+      <li>Open an issue on <a href="https://github.com/franzenzenhofer/franzai-bridge-v2">GitHub</a></li>
+      <li>Email: <a href="mailto:team@fullstackoptimization.com">team@fullstackoptimization.com</a></li>
+    </ul>
   </main>
 </body>
 </html>

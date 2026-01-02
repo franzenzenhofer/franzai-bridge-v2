@@ -366,6 +366,91 @@ console.<span class="function">log</span>(data.choices[0].message.content);</cod
 <span class="keyword">const</span> req = <span class="keyword">new</span> <span class="function">Request</span>(<span class="string">'/api/data'</span>, { franzai: { mode: <span class="string">'off'</span> } });
 <span class="keyword">await</span> <span class="function">fetch</span>(req);</code></pre>
 
+    <h2>Google OAuth API</h2>
+    <p>FranzAI Bridge provides OAuth authentication for Google APIs like Search Console and Analytics. Tokens are stored locally and auto-refreshed.</p>
+
+    <h3>franzai.google.auth(scopes)</h3>
+    <p>Authenticate with Google. Shows consent screen on first call, silent on subsequent calls if scopes match.</p>
+<pre><code><span class="comment">// Request Search Console access</span>
+<span class="keyword">await</span> franzai.google.<span class="function">auth</span>([<span class="string">'webmasters.readonly'</span>]);
+
+<span class="comment">// Request multiple scopes</span>
+<span class="keyword">await</span> franzai.google.<span class="function">auth</span>([<span class="string">'webmasters.readonly'</span>, <span class="string">'analytics.readonly'</span>]);</code></pre>
+
+    <h3>franzai.google.logout()</h3>
+    <p>Clear stored OAuth tokens. Next auth() call will show account picker again.</p>
+<pre><code><span class="keyword">await</span> franzai.google.<span class="function">logout</span>();</code></pre>
+
+    <h3>franzai.google.fetch(url, options)</h3>
+    <p>Fetch from Google APIs with automatic OAuth token injection. Token is refreshed automatically if expired.</p>
+<pre><code><span class="comment">// List Search Console sites</span>
+<span class="keyword">const</span> response = <span class="keyword">await</span> franzai.google.<span class="function">fetch</span>(
+  <span class="string">'https://searchconsole.googleapis.com/webmasters/v3/sites'</span>
+);
+<span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
+console.<span class="function">log</span>(data.siteEntry);</code></pre>
+
+    <h3>franzai.google.isAuthenticated</h3>
+    <p>Boolean indicating if user is currently authenticated.</p>
+<pre><code><span class="keyword">if</span> (franzai.google.isAuthenticated) {
+  console.<span class="function">log</span>(<span class="string">'Logged in as:'</span>, franzai.google.email);
+}</code></pre>
+
+    <h3>franzai.google.email</h3>
+    <p>Email address of authenticated user, or null if not authenticated.</p>
+<pre><code><span class="keyword">const</span> email = franzai.google.email; <span class="comment">// "user@gmail.com" or null</span></code></pre>
+
+    <h3>franzai.google.scopes</h3>
+    <p>Array of currently authorized scopes.</p>
+<pre><code><span class="keyword">const</span> scopes = franzai.google.scopes; <span class="comment">// ['webmasters.readonly']</span></code></pre>
+
+    <h3>franzai.google.hasScopes(scopes)</h3>
+    <p>Check if specific scopes are already authorized (without prompting).</p>
+<pre><code><span class="keyword">const</span> hasAccess = <span class="keyword">await</span> franzai.google.<span class="function">hasScopes</span>([<span class="string">'analytics.readonly'</span>]);</code></pre>
+
+    <h3>Supported Scopes (v1)</h3>
+    <table>
+      <tr><th>Shorthand</th><th>Full Scope</th><th>Access</th></tr>
+      <tr><td><code>webmasters.readonly</code></td><td>https://www.googleapis.com/auth/webmasters.readonly</td><td>Search Console (read)</td></tr>
+      <tr><td><code>analytics.readonly</code></td><td>https://www.googleapis.com/auth/analytics.readonly</td><td>Analytics (read)</td></tr>
+      <tr><td><code>analytics</code></td><td>https://www.googleapis.com/auth/analytics</td><td>Analytics (read/write)</td></tr>
+    </table>
+
+    <h3>Google OAuth Example</h3>
+<pre><code><span class="comment">// Complete example: Fetch Search Console performance data</span>
+<span class="keyword">async function</span> <span class="function">getSearchPerformance</span>(siteUrl) {
+  <span class="comment">// Authenticate if needed</span>
+  <span class="keyword">if</span> (!franzai.google.isAuthenticated) {
+    <span class="keyword">await</span> franzai.google.<span class="function">auth</span>([<span class="string">'webmasters.readonly'</span>]);
+  }
+
+  <span class="comment">// Fetch performance data</span>
+  <span class="keyword">const</span> response = <span class="keyword">await</span> franzai.google.<span class="function">fetch</span>(
+    <span class="string">`https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`</span>,
+    {
+      method: <span class="string">'POST'</span>,
+      headers: { <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span> },
+      body: JSON.<span class="function">stringify</span>({
+        startDate: <span class="string">'2025-12-01'</span>,
+        endDate: <span class="string">'2025-12-31'</span>,
+        dimensions: [<span class="string">'query'</span>],
+        rowLimit: 10
+      })
+    }
+  );
+
+  <span class="keyword">const</span> data = <span class="keyword">await</span> response.<span class="function">json</span>();
+  <span class="keyword">return</span> data.rows;
+}
+
+<span class="comment">// Usage</span>
+<span class="keyword">const</span> queries = <span class="keyword">await</span> <span class="function">getSearchPerformance</span>(<span class="string">'sc-domain:example.com'</span>);
+console.<span class="function">log</span>(<span class="string">'Top queries:'</span>, queries);</code></pre>
+
+    <div class="note">
+      <strong>Token Refresh:</strong> Access tokens expire after 1 hour. The extension automatically refreshes them using the stored refresh token - your code doesn't need to handle this.
+    </div>
+
     <h2>Configuration</h2>
 
     <h3>Domain enablement</h3>
@@ -766,6 +851,121 @@ await fetch('/api/data', { franzai: { mode: 'off' } });
 const req = new Request('/api/data', { franzai: { mode: 'off' } });
 await fetch(req);
 ```
+
+## Google OAuth API
+
+FranzAI Bridge provides OAuth authentication for Google APIs like Search Console and Analytics. Tokens are stored locally and auto-refreshed.
+
+### franzai.google.auth(scopes)
+
+Authenticate with Google. Shows consent screen on first call, silent on subsequent calls if scopes match.
+
+```javascript
+// Request Search Console access
+await franzai.google.auth(['webmasters.readonly']);
+
+// Request multiple scopes
+await franzai.google.auth(['webmasters.readonly', 'analytics.readonly']);
+```
+
+### franzai.google.logout()
+
+Clear stored OAuth tokens. Next auth() call will show account picker again.
+
+```javascript
+await franzai.google.logout();
+```
+
+### franzai.google.fetch(url, options)
+
+Fetch from Google APIs with automatic OAuth token injection. Token is refreshed automatically if expired.
+
+```javascript
+// List Search Console sites
+const response = await franzai.google.fetch(
+  'https://searchconsole.googleapis.com/webmasters/v3/sites'
+);
+const data = await response.json();
+console.log(data.siteEntry);
+```
+
+### franzai.google.isAuthenticated
+
+Boolean indicating if user is currently authenticated.
+
+```javascript
+if (franzai.google.isAuthenticated) {
+  console.log('Logged in as:', franzai.google.email);
+}
+```
+
+### franzai.google.email
+
+Email address of authenticated user, or null if not authenticated.
+
+```javascript
+const email = franzai.google.email; // "user@gmail.com" or null
+```
+
+### franzai.google.scopes
+
+Array of currently authorized scopes.
+
+```javascript
+const scopes = franzai.google.scopes; // ['webmasters.readonly']
+```
+
+### franzai.google.hasScopes(scopes)
+
+Check if specific scopes are already authorized (without prompting).
+
+```javascript
+const hasAccess = await franzai.google.hasScopes(['analytics.readonly']);
+```
+
+### Supported Scopes (v1)
+
+| Shorthand | Full Scope | Access |
+|-----------|------------|--------|
+| `webmasters.readonly` | https://www.googleapis.com/auth/webmasters.readonly | Search Console (read) |
+| `analytics.readonly` | https://www.googleapis.com/auth/analytics.readonly | Analytics (read) |
+| `analytics` | https://www.googleapis.com/auth/analytics | Analytics (read/write) |
+
+### Google OAuth Example
+
+```javascript
+// Complete example: Fetch Search Console performance data
+async function getSearchPerformance(siteUrl) {
+  // Authenticate if needed
+  if (!franzai.google.isAuthenticated) {
+    await franzai.google.auth(['webmasters.readonly']);
+  }
+
+  // Fetch performance data
+  const response = await franzai.google.fetch(
+    `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        startDate: '2025-12-01',
+        endDate: '2025-12-31',
+        dimensions: ['query'],
+        rowLimit: 10
+      })
+    }
+  );
+
+  const data = await response.json();
+  return data.rows;
+}
+
+// Usage
+const queries = await getSearchPerformance('sc-domain:example.com');
+console.log('Top queries:', queries);
+```
+
+**Token Refresh:** Access tokens expire after 1 hour. The extension automatically refreshes them using the stored refresh token - your code doesn't need to handle this.
 
 ## Configuration
 

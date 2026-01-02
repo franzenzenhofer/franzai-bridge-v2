@@ -311,7 +311,11 @@
         ['anthropic', 'Anthropic (Claude Haiku 4.5)'],
         ['gemini', 'Google Gemini (2.5 Flash Lite)'],
         ['mistral', 'Mistral (Small 3.1 24B)'],
-        ['---', '── CORS Bypass Tests ──'],
+        ['---1', '── Google APIs (OAuth) ──'],
+        ['gsc-sites', 'Search Console: List Sites'],
+        ['gsc-performance', 'Search Console: Performance'],
+        ['ga-accounts', 'Analytics: List Accounts'],
+        ['---2', '── CORS Bypass Tests ──'],
         ['hackernews', 'Hacker News API'],
         ['github', 'GitHub API'],
         ['jsonplaceholder', 'JSONPlaceholder API'],
@@ -320,21 +324,74 @@
         const opt = document.createElement('option');
         opt.value = value;
         opt.textContent = text;
-        if (value === '---') opt.disabled = true;
+        if (value.startsWith('---')) opt.disabled = true;
         providerSelect.appendChild(opt);
       });
       providerSection.appendChild(providerLabel);
       providerSection.appendChild(providerSelect);
 
+      // Google Auth section
+      const googleSection = document.createElement('div');
+      googleSection.className = 'input-section';
+      googleSection.id = 'googleAuthSection';
+      googleSection.style.display = 'none';
+      const googleLabel = document.createElement('label');
+      googleLabel.textContent = 'Google Account';
+      const googleStatus = document.createElement('div');
+      googleStatus.id = 'googleStatus';
+      googleStatus.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--panel); border-radius: 4px; margin-bottom: 8px;';
+      const googleStatusText = document.createElement('span');
+      googleStatusText.style.color = 'var(--muted)';
+      googleStatusText.textContent = 'Not connected';
+      googleStatus.appendChild(googleStatusText);
+      const googleAuthBtn = document.createElement('button');
+      googleAuthBtn.className = 'send-btn';
+      googleAuthBtn.id = 'googleAuthBtn';
+      googleAuthBtn.textContent = 'Connect Google Account';
+      googleAuthBtn.onclick = handleGoogleAuth;
+      googleSection.appendChild(googleLabel);
+      googleSection.appendChild(googleStatus);
+      googleSection.appendChild(googleAuthBtn);
+
+      // Add listener to show/hide Google auth section
+      providerSelect.addEventListener('change', function() {
+        const isGoogleApi = this.value.startsWith('gsc-') || this.value.startsWith('ga-');
+        googleSection.style.display = isGoogleApi ? 'block' : 'none';
+        if (isGoogleApi) updateGoogleStatus();
+      });
+
       // Prompt section
       const promptSection = document.createElement('div');
       promptSection.className = 'input-section';
+      promptSection.id = 'promptSection';
       const promptLabel = document.createElement('label');
+      promptLabel.id = 'promptLabel';
       promptLabel.textContent = 'Prompt';
       const promptTextarea = document.createElement('textarea');
       promptTextarea.id = 'prompt';
       promptTextarea.placeholder = 'Enter your prompt here...';
       promptTextarea.value = 'Hello! Tell me a fun fact about AI.';
+
+      // Update prompt label based on provider
+      providerSelect.addEventListener('change', function() {
+        const promptLabel = document.getElementById('promptLabel');
+        const promptTextarea = document.getElementById('prompt');
+        if (this.value === 'gsc-performance') {
+          promptLabel.textContent = 'Site URL';
+          promptTextarea.placeholder = 'Enter site URL (e.g., sc-domain:example.com)';
+          promptTextarea.value = 'sc-domain:example.com';
+        } else if (this.value.startsWith('gsc-') || this.value.startsWith('ga-')) {
+          promptLabel.textContent = 'Parameters (optional)';
+          promptTextarea.placeholder = 'Optional parameters...';
+          promptTextarea.value = '';
+        } else {
+          promptLabel.textContent = 'Prompt';
+          promptTextarea.placeholder = 'Enter your prompt here...';
+          if (!promptTextarea.value || promptTextarea.value === 'sc-domain:example.com') {
+            promptTextarea.value = 'Hello! Tell me a fun fact about AI.';
+          }
+        }
+      });
       promptSection.appendChild(promptLabel);
       promptSection.appendChild(promptTextarea);
 
@@ -349,6 +406,7 @@
       btnSection.appendChild(sendBtn);
 
       inputPanel.appendChild(providerSection);
+      inputPanel.appendChild(googleSection);
       inputPanel.appendChild(promptSection);
       inputPanel.appendChild(btnSection);
 
@@ -395,6 +453,10 @@
         anthropic: { url: 'https://api.anthropic.com/v1/messages', headers: { 'anthropic-version': '2023-06-01' }, body: (p) => ({ model: 'claude-haiku-4.5-20251015', max_tokens: 1024, messages: [{ role: 'user', content: p }] }) },
         gemini: { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent', body: (p) => ({ contents: [{ parts: [{ text: p }] }] }) },
         mistral: { url: 'https://api.mistral.ai/v1/chat/completions', body: (p) => ({ model: 'mistral-small-3.1-24b-instruct', messages: [{ role: 'user', content: p }] }) },
+        // Google APIs (OAuth)
+        'gsc-sites': { method: 'GET', url: 'https://searchconsole.googleapis.com/webmasters/v3/sites', noBody: true, googleApi: true, scopes: ['webmasters.readonly'] },
+        'gsc-performance': { method: 'POST', url: 'https://searchconsole.googleapis.com/webmasters/v3/sites/{siteUrl}/searchAnalytics/query', googleApi: true, scopes: ['webmasters.readonly'], body: () => ({ startDate: getDateDaysAgo(28), endDate: getDateDaysAgo(1), dimensions: ['query'], rowLimit: 10 }) },
+        'ga-accounts': { method: 'GET', url: 'https://analyticsadmin.googleapis.com/v1beta/accounts', noBody: true, googleApi: true, scopes: ['analytics.readonly'] },
         // CORS Bypass Tests (no API key needed)
         hackernews: { method: 'GET', url: 'https://hacker-news.firebaseio.com/v0/topstories.json?print=pretty', noBody: true },
         github: { method: 'GET', url: 'https://api.github.com/repos/anthropics/claude-code/commits?per_page=5', noBody: true },
@@ -404,6 +466,59 @@
       return configs[provider];
     }
 
+    function getDateDaysAgo(days) {
+      const d = new Date();
+      d.setDate(d.getDate() - days);
+      return d.toISOString().split('T')[0];
+    }
+
+    async function updateGoogleStatus() {
+      const statusDiv = document.getElementById('googleStatus');
+      const authBtn = document.getElementById('googleAuthBtn');
+      if (!statusDiv || !authBtn) return;
+
+      statusDiv.textContent = '';
+      const statusText = document.createElement('span');
+
+      if (window.franzai && window.franzai.google) {
+        if (window.franzai.google.isAuthenticated) {
+          statusText.style.color = 'var(--success)';
+          statusText.textContent = window.franzai.google.email || 'Connected';
+          authBtn.textContent = 'Disconnect';
+          authBtn.style.background = 'var(--error)';
+        } else {
+          statusText.style.color = 'var(--muted)';
+          statusText.textContent = 'Not connected';
+          authBtn.textContent = 'Connect Google Account';
+          authBtn.style.background = '';
+        }
+      } else {
+        statusText.style.color = 'var(--warning)';
+        statusText.textContent = 'Google Auth not available (coming soon)';
+        authBtn.disabled = true;
+        authBtn.textContent = 'Not Available';
+      }
+      statusDiv.appendChild(statusText);
+    }
+
+    async function handleGoogleAuth() {
+      if (!window.franzai || !window.franzai.google) {
+        alert('Google Auth is not available yet. This feature is coming soon!');
+        return;
+      }
+
+      try {
+        if (window.franzai.google.isAuthenticated) {
+          await window.franzai.google.logout();
+        } else {
+          await window.franzai.google.auth(['webmasters.readonly', 'analytics.readonly']);
+        }
+        updateGoogleStatus();
+      } catch (e) {
+        alert('Google Auth error: ' + e.message);
+      }
+    }
+
     async function sendRequest() {
       if (!extensionReady) return;
 
@@ -411,23 +526,48 @@
       const prompt = document.getElementById('prompt').value.trim();
       const sendBtn = document.getElementById('sendBtn');
 
-      if (provider === '---') return;
+      if (provider.startsWith('---')) return;
 
       const config = getProviderConfig(provider);
       const method = config.method || 'POST';
       const isGetRequest = method === 'GET' || config.noBody;
+      const isGoogleApi = config.googleApi;
 
-      if (!isGetRequest && !prompt) { alert('Please enter a prompt'); return; }
+      // For Google APIs, check authentication first
+      if (isGoogleApi) {
+        if (!window.franzai || !window.franzai.google) {
+          alert('Google Auth is not available yet. This feature is coming soon!');
+          return;
+        }
+        if (!window.franzai.google.isAuthenticated) {
+          alert('Please connect your Google account first.');
+          return;
+        }
+      }
+
+      if (!isGetRequest && !isGoogleApi && !prompt) { alert('Please enter a prompt'); return; }
 
       const startTime = Date.now();
-      const requestBody = isGetRequest ? null : config.body(prompt);
+      let requestUrl = config.url;
+      let requestBody = null;
+
+      // Handle Google API URL substitutions
+      if (isGoogleApi && requestUrl.includes('{siteUrl}')) {
+        const siteUrl = prompt.trim() || 'sc-domain:example.com';
+        requestUrl = requestUrl.replace('{siteUrl}', encodeURIComponent(siteUrl));
+      }
+
+      if (!isGetRequest) {
+        requestBody = isGoogleApi && config.body ? config.body() : config.body(prompt);
+      }
+
       const requestHeaders = isGetRequest ? {} : { 'Content-Type': 'application/json', ...(config.headers || {}) };
 
       const logEntry = {
         id: Date.now(),
         time: new Date().toLocaleTimeString(),
         method: method,
-        url: config.url,
+        url: requestUrl,
         status: null,
         elapsed: null,
         request: { headers: requestHeaders, body: requestBody },
@@ -443,13 +583,25 @@
       sendBtn.textContent = 'Sending...';
 
       try {
-        const fetchOptions = { method };
-        if (!isGetRequest) {
-          fetchOptions.headers = requestHeaders;
-          fetchOptions.body = JSON.stringify(requestBody);
-        }
+        let response;
 
-        const response = await fetch(config.url, fetchOptions);
+        if (isGoogleApi) {
+          // Use franzai.google.fetch for Google APIs
+          const fetchOptions = { method };
+          if (!isGetRequest && requestBody) {
+            fetchOptions.headers = { 'Content-Type': 'application/json' };
+            fetchOptions.body = JSON.stringify(requestBody);
+          }
+          response = await window.franzai.google.fetch(requestUrl, fetchOptions);
+        } else {
+          // Use regular fetch (with CORS bypass via extension)
+          const fetchOptions = { method };
+          if (!isGetRequest) {
+            fetchOptions.headers = requestHeaders;
+            fetchOptions.body = JSON.stringify(requestBody);
+          }
+          response = await fetch(config.url, fetchOptions);
+        }
 
         logEntry.elapsed = Date.now() - startTime;
         logEntry.status = response.status;
