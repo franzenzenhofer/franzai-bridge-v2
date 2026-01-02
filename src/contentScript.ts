@@ -24,6 +24,100 @@ import { createLogger } from "./shared/logger";
 import { sendRuntimeMessage } from "./shared/runtime";
 
 const log = createLogger("content");
+const BRIDGE_DISABLED_MESSAGE =
+  "Bridge is disabled for this domain. Enable it in the extension or add <meta name=\"franzai-bridge\" content=\"enabled\"> to your page.";
+
+let domainStatusCache: BridgeStatus | null = null;
+let domainStatusPromise: Promise<BridgeStatus> | null = null;
+
+function makeFallbackStatus(reason: string): BridgeStatus {
+  return {
+    installed: true,
+    version: "unknown",
+    domainEnabled: false,
+    domainSource: "default",
+    originAllowed: false,
+    hasApiKeys: false,
+    ready: false,
+    reason
+  };
+}
+
+async function fetchDomainStatus(domain: string): Promise<BridgeStatus> {
+  if (domainStatusPromise) return domainStatusPromise;
+
+  domainStatusPromise = (async () => {
+    try {
+      const resp = await sendRuntimeMessage<
+        { type: typeof BG_MSG.GET_DOMAIN_STATUS; payload: { domain: string } },
+        { ok: boolean; status: BridgeStatus; error?: string }
+      >({
+        type: BG_MSG.GET_DOMAIN_STATUS,
+        payload: { domain }
+      });
+
+      const status = resp.ok && resp.status
+        ? resp.status
+        : makeFallbackStatus(resp.error ?? "Failed to get status from extension");
+      domainStatusCache = status;
+      return status;
+    } catch (e) {
+      log.warn("Failed to fetch domain status", e);
+      const fallback = makeFallbackStatus("Failed to get status from extension");
+      domainStatusCache = fallback;
+      return fallback;
+    } finally {
+      domainStatusPromise = null;
+    }
+  })();
+
+  return domainStatusPromise;
+}
+
+function isBridgeEnabled(status: BridgeStatus | null): boolean {
+  return status?.domainEnabled === true;
+}
+
+function sendBlockedFetchResponse(requestId: string, message: string) {
+  const errorResponse: FetchResponseToPage = {
+    requestId,
+    ok: false,
+    status: 0,
+    statusText: "Bridge Disabled",
+    headers: {},
+    bodyText: "",
+    elapsedMs: 0,
+    error: message
+  };
+
+  window.postMessage(
+    {
+      source: BRIDGE_SOURCE,
+      type: PAGE_MSG.FETCH_RESPONSE,
+      payload: { ok: false, response: errorResponse, error: message }
+    },
+    "*"
+  );
+}
+
+function sendBlockedGoogleFetchResponse(requestId: string, message: string) {
+  window.postMessage(
+    {
+      source: BRIDGE_SOURCE,
+      type: PAGE_MSG.GOOGLE_FETCH_RESPONSE,
+      payload: {
+        requestId,
+        ok: false,
+        status: 0,
+        statusText: "Bridge Disabled",
+        headers: {},
+        bodyText: "",
+        error: message
+      }
+    },
+    "*"
+  );
+}
 
 // =============================================================================
 // Listen for domain preference changes from background
@@ -35,28 +129,19 @@ port.onMessage.addListener(async (evt: BgEvent) => {
     // Fetch updated status and notify the page
     const domain = window.location.hostname;
     try {
-      const resp = await sendRuntimeMessage<
-        { type: typeof BG_MSG.GET_DOMAIN_STATUS; payload: { domain: string } },
-        { ok: boolean; status: BridgeStatus }
-      >({
-        type: BG_MSG.GET_DOMAIN_STATUS,
-        payload: { domain }
-      });
-
-      if (resp.ok && resp.status) {
-        log.info("Domain status updated, notifying page:", resp.status.domainEnabled);
-        window.postMessage(
-          {
-            source: BRIDGE_SOURCE,
-            type: PAGE_MSG.DOMAIN_ENABLED_UPDATE,
-            payload: {
-              enabled: resp.status.domainEnabled,
-              source: resp.status.domainSource
-            }
-          },
-          "*"
-        );
-      }
+      const status = await fetchDomainStatus(domain);
+      log.info("Domain status updated, notifying page:", status.domainEnabled);
+      window.postMessage(
+        {
+          source: BRIDGE_SOURCE,
+          type: PAGE_MSG.DOMAIN_ENABLED_UPDATE,
+          payload: {
+            enabled: status.domainEnabled,
+            source: status.domainSource
+          }
+        },
+        "*"
+      );
     } catch (e) {
       log.warn("Failed to fetch updated domain status", e);
     }
@@ -96,6 +181,26 @@ port.onMessage.addListener(async (evt: BgEvent) => {
       "*"
     );
   }
+});
+
+async function sendInitialDomainStatus() {
+  const domain = window.location.hostname;
+  const status = await fetchDomainStatus(domain);
+  window.postMessage(
+    {
+      source: BRIDGE_SOURCE,
+      type: PAGE_MSG.DOMAIN_ENABLED_UPDATE,
+      payload: {
+        enabled: status.domainEnabled,
+        source: status.domainSource
+      }
+    },
+    "*"
+  );
+}
+
+sendInitialDomainStatus().catch((e) => {
+  log.warn("Failed to send initial domain status", e);
 });
 
 // =============================================================================
@@ -235,34 +340,18 @@ window.addEventListener("message", async (event) => {
     const domain = window.location.hostname;
 
     try {
-      const resp = await sendRuntimeMessage<
-        { type: typeof BG_MSG.GET_DOMAIN_STATUS; payload: { domain: string } },
-        { ok: boolean; status: BridgeStatus }
-      >({
-        type: BG_MSG.GET_DOMAIN_STATUS,
-        payload: { domain }
-      });
-
+      const status = await fetchDomainStatus(domain);
       window.postMessage(
         {
           source: BRIDGE_SOURCE,
           type: PAGE_MSG.STATUS_RESPONSE,
-          payload: { statusId, status: resp.status }
+          payload: { statusId, status }
         },
         "*"
       );
     } catch (e) {
       log.warn("Failed to get status", e);
-      const fallbackStatus: BridgeStatus = {
-        installed: true,
-        version: "unknown",
-        domainEnabled: false,
-        domainSource: "default",
-        originAllowed: false,
-        hasApiKeys: false,
-        ready: false,
-        reason: "Failed to get status from extension"
-      };
+      const fallbackStatus = makeFallbackStatus("Failed to get status from extension");
       window.postMessage(
         {
           source: BRIDGE_SOURCE,
@@ -279,6 +368,14 @@ window.addEventListener("message", async (event) => {
     const req = data.payload as PageFetchRequest;
     if (!req?.requestId) {
       log.warn("Dropping request without requestId");
+      return;
+    }
+
+    const domain = window.location.hostname;
+    const status = domainStatusCache ?? await fetchDomainStatus(domain);
+    if (!isBridgeEnabled(status)) {
+      log.info("Blocked fetch: bridge disabled for domain", domain);
+      sendBlockedFetchResponse(req.requestId, BRIDGE_DISABLED_MESSAGE);
       return;
     }
 
@@ -431,6 +528,14 @@ window.addEventListener("message", async (event) => {
 
   if (data.type === PAGE_MSG.GOOGLE_FETCH_REQUEST) {
     const req = data.payload as GoogleFetchRequest;
+    const domain = window.location.hostname;
+    const status = domainStatusCache ?? await fetchDomainStatus(domain);
+    if (!isBridgeEnabled(status)) {
+      log.info("Blocked Google fetch: bridge disabled for domain", domain);
+      sendBlockedGoogleFetchResponse(req.requestId, BRIDGE_DISABLED_MESSAGE);
+      return;
+    }
+
     try {
       const resp = await sendRuntimeMessage<
         { type: typeof BG_MSG.GOOGLE_FETCH; payload: GoogleFetchRequest },

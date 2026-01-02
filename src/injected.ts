@@ -35,6 +35,8 @@ const win = window as Window & {
   __franzaiBridgeInstalled?: boolean;
   __franzaiNativeFetch?: typeof fetch;
   __franzaiNativeRequest?: typeof Request;
+  __franzaiNativeFetchDescriptor?: PropertyDescriptor | null;
+  __franzaiNativeRequestDescriptor?: PropertyDescriptor | null;
   __franzaiBridgeConfig?: BridgeConfig;
   franzai?: FranzAIBridge;
 };
@@ -50,6 +52,12 @@ const NATIVE_FETCH = ALREADY_INSTALLED
 const NATIVE_REQUEST = ALREADY_INSTALLED
   ? (win.__franzaiNativeRequest as typeof Request)
   : window.Request;
+const NATIVE_FETCH_DESCRIPTOR = ALREADY_INSTALLED
+  ? (win.__franzaiNativeFetchDescriptor ?? null)
+  : (Object.getOwnPropertyDescriptor(window, "fetch") ?? null);
+const NATIVE_REQUEST_DESCRIPTOR = ALREADY_INSTALLED
+  ? (win.__franzaiNativeRequestDescriptor ?? null)
+  : (Object.getOwnPropertyDescriptor(window, "Request") ?? null);
 
 // Store in protected properties (cannot be overwritten) - only if first install
 if (!ALREADY_INSTALLED) {
@@ -62,6 +70,18 @@ if (!ALREADY_INSTALLED) {
     },
     __franzaiNativeRequest: {
       value: NATIVE_REQUEST,
+      writable: false,
+      configurable: false,
+      enumerable: false
+    },
+    __franzaiNativeFetchDescriptor: {
+      value: NATIVE_FETCH_DESCRIPTOR,
+      writable: false,
+      configurable: false,
+      enumerable: false
+    },
+    __franzaiNativeRequestDescriptor: {
+      value: NATIVE_REQUEST_DESCRIPTOR,
       writable: false,
       configurable: false,
       enumerable: false
@@ -80,6 +100,8 @@ if (!ALREADY_INSTALLED) {
 // =============================================================================
 
 const log = createLogger("page");
+const BRIDGE_DISABLED_MESSAGE =
+  "Bridge is disabled for this domain. Enable it in the extension or add <meta name=\"franzai-bridge\" content=\"enabled\"> to your page.";
 
 type BridgeMode = "auto" | "always" | "off";
 
@@ -234,6 +256,25 @@ async function fetchDomainStatus(): Promise<BridgeStatus> {
   return result;
 }
 
+async function ensureDomainStatus(): Promise<BridgeStatus> {
+  const status = await fetchDomainStatus();
+  syncBridgeHooksFromCache();
+  return status;
+}
+
+async function ensureDomainEnabled(): Promise<boolean> {
+  let enabled = getCachedDomainEnabled(domainStatusCache);
+  if (enabled === null) {
+    try {
+      await ensureDomainStatus();
+      enabled = getCachedDomainEnabled(domainStatusCache);
+    } catch {
+      enabled = null;
+    }
+  }
+  return enabled === true;
+}
+
 // Listen for domain enabled updates from background (via content script)
 window.addEventListener("message", (ev) => {
   if (ev.source !== window) return;
@@ -245,6 +286,7 @@ window.addEventListener("message", (ev) => {
   log.info("DOMAIN_ENABLED_UPDATE received:", enabled, "cache status:", !!domainStatusCache.status);
   applyDomainEnabledUpdate(domainStatusCache, data.payload ?? {});
   log.info("Domain enabled cache updated:", getCachedDomainEnabled(domainStatusCache));
+  syncBridgeHooksFromCache();
 });
 
 window.addEventListener("message", (ev) => {
@@ -536,6 +578,122 @@ async function requestToLite(input: RequestInfo | URL, init?: BridgeInit): Promi
 // Use the protected native implementations we captured at startup
 const nativeFetch = NATIVE_FETCH;
 const nativeRequest = NATIVE_REQUEST;
+const originalFetchDescriptor = NATIVE_FETCH_DESCRIPTOR;
+const originalRequestDescriptor = NATIVE_REQUEST_DESCRIPTOR;
+const hookState = { installed: false };
+
+function restoreNativeFetch() {
+  if (originalFetchDescriptor) {
+    try {
+      Object.defineProperty(window, "fetch", originalFetchDescriptor);
+      return;
+    } catch {
+      // Fall back to assignment/delete below.
+    }
+  }
+
+  try {
+    delete (window as { fetch?: typeof fetch }).fetch;
+  } catch {
+    // Ignore delete errors; fall back to assignment.
+  }
+
+  try {
+    window.fetch = nativeFetch as typeof fetch;
+  } catch {
+    // Ignore restore failures.
+  }
+}
+
+function restoreNativeRequest() {
+  if (originalRequestDescriptor) {
+    try {
+      Object.defineProperty(window, "Request", originalRequestDescriptor);
+      return;
+    } catch {
+      // Fall back to assignment/delete below.
+    }
+  }
+
+  try {
+    delete (window as { Request?: typeof Request }).Request;
+  } catch {
+    // Ignore delete errors; fall back to assignment.
+  }
+
+  try {
+    window.Request = nativeRequest;
+  } catch {
+    // Ignore restore failures.
+  }
+}
+
+function installFetchHook() {
+  const hookDescriptor: PropertyDescriptor = {
+    value: hookedFetch,
+    enumerable: true,
+    writable: !bridgeConfig.lockHooks,
+    configurable: true
+  };
+
+  try {
+    Object.defineProperty(window, "fetch", hookDescriptor);
+  } catch {
+    // Fallback if defineProperty fails (shouldn't happen)
+    window.fetch = hookedFetch as typeof fetch;
+  }
+
+  if (!bridgeConfig.lockHooks) return;
+
+  queueMicrotask(() => {
+    if (window.fetch !== hookedFetch) {
+      log.error("CRITICAL: fetch hook was overwritten immediately after installation!");
+      try {
+        Object.defineProperty(window, "fetch", hookDescriptor);
+        log.info("Recovered fetch hook with guarded lock");
+      } catch (e) {
+        log.error("Failed to recover fetch hook", e);
+      }
+    }
+  });
+}
+
+function installBridgeHooks() {
+  if (hookState.installed) return;
+  installRequestHook();
+  installFetchHook();
+  hookState.installed = true;
+
+  window.postMessage(
+    {
+      source: BRIDGE_SOURCE,
+      type: PAGE_MSG.BRIDGE_READY,
+      payload: { version: BRIDGE_VERSION }
+    },
+    "*"
+  );
+}
+
+function uninstallBridgeHooks() {
+  if (!hookState.installed) return;
+  hookState.installed = false;
+  restoreNativeRequest();
+  restoreNativeFetch();
+  const w = window as unknown as { __franzaiRequestHookInstalled?: boolean };
+  w.__franzaiRequestHookInstalled = false;
+}
+
+function setBridgeActive(active: boolean) {
+  if (active) {
+    installBridgeHooks();
+    return;
+  }
+  uninstallBridgeHooks();
+}
+
+function syncBridgeHooksFromCache() {
+  setBridgeActive(getCachedDomainEnabled(domainStatusCache) === true);
+}
 
 function isCrossOrigin(input: RequestInfo | URL): boolean {
   try {
@@ -616,10 +774,14 @@ const franzai: FranzAIBridge = {
       return domainStatusCache.status;
     }
     // Fetch fresh status from background
-    return fetchDomainStatus();
+    return ensureDomainStatus();
   },
 
   async fetch(input: RequestInfo | URL, init?: BridgeInit): Promise<Response> {
+    if (!(await ensureDomainEnabled())) {
+      throw new Error(BRIDGE_DISABLED_MESSAGE);
+    }
+
     const lite = await requestToLite(input, init);
 
     if (lite.signal?.aborted) {
@@ -769,6 +931,10 @@ const franzai: FranzAIBridge = {
     },
 
     async fetch(url: string, init?: RequestInit): Promise<Response> {
+      if (!(await ensureDomainEnabled())) {
+        throw new Error(BRIDGE_DISABLED_MESSAGE);
+      }
+
       const requestId = makeId("gfetch");
       const liteInit = init ? {
         method: init.method,
@@ -878,6 +1044,10 @@ const franzai: FranzAIBridge = {
 };
 
 async function hookedFetch(input: RequestInfo | URL, init?: BridgeInit): Promise<Response> {
+  if (!hookState.installed) {
+    return nativeFetch(input as RequestInfo, init as RequestInit | undefined);
+  }
+
   const mode = resolveBridgeMode(input, init);
 
   if (!shouldUseBridgeForRequest(input, init)) {
@@ -891,7 +1061,7 @@ async function hookedFetch(input: RequestInfo | URL, init?: BridgeInit): Promise
   // If no cached status yet, wait for the check before deciding
   if (domainEnabled === null) {
     try {
-      await fetchDomainStatus();
+      await ensureDomainStatus();
       domainEnabled = getCachedDomainEnabled(domainStatusCache);
       log.info("hookedFetch after fetch - domainEnabled:", domainEnabled);
     } catch {
@@ -953,10 +1123,10 @@ function installRequestHook() {
 }
 
 // =============================================================================
-// PROTECTED HOOK INSTALLATION (only on first install)
+// BOOTSTRAP (only on first install)
 // =============================================================================
 
-  if (!ALREADY_INSTALLED) {
+if (!ALREADY_INSTALLED) {
   // Expose the franzai API (protected)
   Object.defineProperty(win, "franzai", {
     value: franzai,
@@ -964,35 +1134,6 @@ function installRequestHook() {
     configurable: false,
     enumerable: true
   });
-
-  // Install Request hook
-  installRequestHook();
-
-  // Install fetch hook with protection based on config
-  const hookDescriptor: PropertyDescriptor = {
-    value: hookedFetch,
-    enumerable: true,
-    // If lockHooks is true, prevent pages from overwriting our hook
-    writable: !bridgeConfig.lockHooks,
-    configurable: !bridgeConfig.lockHooks
-  };
-
-  try {
-    Object.defineProperty(window, "fetch", hookDescriptor);
-  } catch {
-    // Fallback if defineProperty fails (shouldn't happen)
-    window.fetch = hookedFetch as typeof fetch;
-  }
-
-  // Notify that bridge is ready
-  window.postMessage(
-    {
-      source: BRIDGE_SOURCE,
-      type: PAGE_MSG.BRIDGE_READY,
-      payload: { version: franzai.version }
-    },
-    "*"
-  );
 
   log.info("FranzAI Bridge installed", {
     version: franzai.version,
@@ -1010,26 +1151,8 @@ function installRequestHook() {
     // Ignore refresh failures; state can be requested later.
   });
 
-  // =============================================================================
-  // VERIFICATION - Confirm hooks are properly installed
-  // =============================================================================
-
-  queueMicrotask(() => {
-    // Verify fetch hook is still in place
-    if (window.fetch !== hookedFetch) {
-      log.error("CRITICAL: fetch hook was overwritten immediately after installation!");
-      // Attempt recovery
-      try {
-        Object.defineProperty(window, "fetch", {
-          value: hookedFetch,
-          writable: false,
-          configurable: false,
-          enumerable: true
-        });
-        log.info("Recovered fetch hook with forced lock");
-      } catch (e) {
-        log.error("Failed to recover fetch hook", e);
-      }
-    }
+  // Sync hook installation with the current domain preference.
+  ensureDomainStatus().catch(() => {
+    // Ignore status failures; hooks remain off by default.
   });
 }

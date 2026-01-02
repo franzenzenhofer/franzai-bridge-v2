@@ -305,7 +305,7 @@ console.<span class="function">log</span>(data.choices[0].message.content);</cod
 <span class="comment">// version: string like "2.0.53"</span></code></pre>
 
     <h3>window.franzai.fetch(url, options)</h3>
-    <p>Explicit bridge call. Same as regular fetch() but always routes through the extension (ignores per-request <code>franzai.mode</code> overrides). Use this to force the bridge even if the domain toggle is off.</p>
+    <p>Explicit bridge call. Same as regular fetch() but only routes through the extension when the domain is enabled (still ignores per-request <code>franzai.mode</code> overrides).</p>
 <pre><code><span class="keyword">const</span> response = <span class="keyword">await</span> window.franzai.<span class="function">fetch</span>(
   <span class="string">'https://api.openai.com/v1/chat/completions'</span>,
   { method: <span class="string">'POST'</span>, body: <span class="string">'...'</span> }
@@ -358,7 +358,7 @@ console.<span class="function">log</span>(data.choices[0].message.content);</cod
 
     <h3>Per-request mode override (fetch / Request)</h3>
     <p>Override bridge routing for a single request when using <code>window.fetch</code>.</p>
-    <p><strong>Note:</strong> This does not affect <code>window.franzai.fetch</code>, which always bridges.</p>
+    <p><strong>Note:</strong> This does not affect <code>window.franzai.fetch</code>, but it will still be blocked if the domain is disabled.</p>
 <pre><code><span class="comment">// One-off bypass</span>
 <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">'/api/data'</span>, { franzai: { mode: <span class="string">'off'</span> } });
 
@@ -756,7 +756,7 @@ const { ok, version } = await window.franzai.ping();
 
 ### window.franzai.fetch(url, options)
 
-Explicit bridge call. Same as regular fetch() but always routes through the extension (ignores per-request `franzai.mode` overrides). Use this to force the bridge even if the domain toggle is off.
+Explicit bridge call. Same as regular fetch() but only routes through the extension when the domain is enabled (still ignores per-request `franzai.mode` overrides).
 
 ```javascript
 const response = await window.franzai.fetch(
@@ -841,7 +841,7 @@ const status = await window.franzai.getStatus();
 ### Per-request mode override (fetch / Request)
 
 Override bridge routing for a single request when using `window.fetch`.
-**Note:** This does not affect `window.franzai.fetch`, which always bridges.
+**Note:** This does not affect `window.franzai.fetch`, but it will still be blocked if the domain is disabled.
 
 ```javascript
 // One-off bypass
