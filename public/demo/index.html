@@ -4,189 +4,59 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="franzai-bridge" content="enabled">
-  <title>FranzAI Bridge Demo - Live API Testing</title>
-  <meta name="description" content="Test AI API calls with FranzAI Bridge. Requires the Chrome extension.">
+  <title>Bridge Workbench - FranzAI</title>
+  <meta name="description" content="Network Interception Debugger for FranzAI Bridge">
   <link rel="icon" href="/favicon.ico">
-  <link rel="stylesheet" href="demo-ui.css">
-  <link rel="stylesheet" href="google-oauth.css">
-  <style>
-    :root {
-      --bg: #ffffff;
-      --panel: #f1f3f4;
-      --panel-lighter: #e8eaed;
-      --text: #202124;
-      --text-bright: #000000;
-      --muted: #5f6368;
-      --border: #dadce0;
-      --accent: #1a73e8;
-      --success: #188038;
-      --error: #d93025;
-      --warning: #e37400;
-      --method-get: #1a73e8;
-      --method-post: #188038;
-      --row-hover: #f1f3f4;
-      --row-selected: #e8f0fe;
-      --font-mono: "Roboto Mono", "SF Mono", "Monaco", "Consolas", monospace;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 12px; height: 100%; }
-
-    .topbar { display: flex; align-items: center; padding: 6px 10px; background: var(--panel); border-bottom: 1px solid var(--border); gap: 8px; min-height: 36px; }
-    .brand { display: flex; align-items: baseline; gap: 6px; }
-    .brand .title { font-weight: 600; font-size: 13px; color: var(--text-bright); }
-    .brand .version { font-size: 10px; color: var(--muted); font-family: var(--font-mono); }
-    .back-link { color: var(--muted); text-decoration: none; font-size: 11px; display: flex; align-items: center; gap: 4px; }
-    .back-link:hover { color: var(--accent); }
-
-    .status-indicator { margin-left: auto; display: flex; align-items: center; gap: 6px; padding: 4px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; font-size: 11px; }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-    .status-dot.checking { background: var(--warning); animation: pulse 1s infinite; }
-    .status-dot.ready { background: var(--success); }
-    .status-dot.error { background: var(--error); }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
-    .toolbar { display: flex; align-items: center; padding: 4px 10px; background: var(--bg); border-bottom: 1px solid var(--border); gap: 8px; min-height: 32px; }
-    .toolbar-title { font-weight: 600; font-size: 12px; color: var(--text); }
-
-    .layout { display: flex; height: calc(100vh - 68px); }
-    .input-panel { width: 380px; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--bg); overflow-y: auto; }
-    .output-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-
-    .table-header { display: grid; grid-template-columns: 45px 45px 120px 1fr 40px 40px; background: var(--panel); border-bottom: 1px solid var(--border); font-size: 10px; color: var(--muted); font-weight: 500; text-transform: uppercase; }
-    .table-header > div { padding: 6px 4px; border-right: 1px solid var(--border); }
-    .table-header > div:last-child { border-right: none; }
-    .log-list { flex: 0 0 auto; max-height: 220px; overflow-y: auto; border-bottom: 1px solid var(--border); }
-    .detail-panel { flex: 1; overflow: auto; background: var(--bg); }
-
-    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 40px; text-align: center; }
-    .empty-state svg { width: 64px; height: 64px; color: var(--muted); margin-bottom: 16px; }
-    .empty-state h3 { color: var(--text); margin-bottom: 8px; font-size: 16px; }
-    .empty-state p { color: var(--muted); margin-bottom: 16px; max-width: 300px; }
-    .install-btn { display: inline-block; background: var(--accent); color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-size: 13px; font-weight: 500; }
-    .install-btn:hover { background: #1557b0; }
-
-    @media (max-width: 768px) { .layout { flex-direction: column; } .input-panel { width: 100%; border-right: none; border-bottom: 1px solid var(--border); max-height: 50vh; } }
-  </style>
+  <link rel="stylesheet" href="styles/variables.css">
+  <link rel="stylesheet" href="styles/layout.css">
+  <link rel="stylesheet" href="styles/components.css">
+  <link rel="stylesheet" href="styles/context-rail.css">
+  <link rel="stylesheet" href="styles/composer.css">
+  <link rel="stylesheet" href="styles/telemetry.css">
 </head>
 <body>
-  <header class="topbar">
+  <header class="status-bar">
     <a href="/" class="back-link">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-      Back
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+      </svg>
     </a>
-    <div class="brand">
-      <span class="title">FranzAI Bridge Demo</span>
-      <span class="version">v2.0</span>
-    </div>
-    <div class="status-indicator" id="statusIndicator">
-      <span class="status-dot checking" id="statusDot"></span>
-      <span id="statusText">Checking...</span>
-    </div>
+    <span class="title">Bridge Workbench</span>
+    <span class="status" id="extensionStatus">
+      <span class="status-dot"></span>
+      <span class="status-text">Checking...</span>
+    </span>
   </header>
-  <nav class="toolbar"><span class="toolbar-title">Live API Testing</span></nav>
-  <main class="layout" id="mainContent"></main>
 
-  <script src="examples.js"></script>
-  <script src="demo-ui.js"></script>
-  <script src="google-oauth.js"></script>
-  <script>
-    const mainContent = document.getElementById('mainContent');
-    const statusDot = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
+  <main class="workbench">
+    <aside class="context-rail" id="contextRail"></aside>
+    <section class="composer" id="composer"></section>
+    <section class="telemetry" id="telemetry"></section>
+  </main>
 
-    function el(tag, className, text) {
-      const e = document.createElement(tag);
-      if (className) e.className = className;
-      if (text) e.textContent = text;
-      return e;
-    }
+  <div class="ghost-overlay" id="ghostOverlay">
+    <div class="ghost-content">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="11" width="18" height="11" rx="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      <h2>Bridge Disconnected</h2>
+      <p>Waiting for Signal...</p>
+      <a href="/" class="install-btn">Get the Extension</a>
+    </div>
+  </div>
 
-    async function checkExtension() {
-      try {
-        if (window.franzai && typeof window.franzai.ping === 'function') {
-          const result = await window.franzai.ping();
-          if (result && result.ok) {
-            statusDot.className = 'status-dot ready';
-            statusText.textContent = 'Ready (v' + result.version + ')';
-            renderDemoUI();
-            return;
-          }
-        }
-      } catch (e) { /* ignore */ }
-      statusDot.className = 'status-dot error';
-      statusText.textContent = 'Extension required';
-      renderInstallPrompt();
-    }
-
-    function renderInstallPrompt() {
-      mainContent.textContent = '';
-      const container = el('div', 'empty-state');
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('viewBox', '0 0 24 24');
-      svg.setAttribute('fill', 'none');
-      svg.setAttribute('stroke', 'currentColor');
-      svg.setAttribute('stroke-width', '1.5');
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', '3'); rect.setAttribute('y', '11'); rect.setAttribute('width', '18'); rect.setAttribute('height', '11'); rect.setAttribute('rx', '2');
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', 'M7 11V7a5 5 0 0 1 10 0v4');
-      svg.appendChild(rect);
-      svg.appendChild(path);
-      container.appendChild(svg);
-      container.appendChild(el('h3', null, 'Extension Required'));
-      container.appendChild(el('p', null, 'The FranzAI Bridge Chrome extension must be installed to use this demo.'));
-      const link = el('a', 'install-btn', 'Get the Extension');
-      link.href = '/';
-      container.appendChild(link);
-      mainContent.appendChild(container);
-    }
-
-    function renderDemoUI() {
-      mainContent.textContent = '';
-
-      // Left panel - Examples
-      const inputPanel = el('div', 'input-panel');
-      const examplesContainer = el('div', 'examples-panel');
-      DemoUI.init(examplesContainer);
-      inputPanel.appendChild(examplesContainer);
-
-      // Google OAuth section (at bottom)
-      const googleSection = el('div', 'google-section');
-      googleSection.id = 'googleOAuthSection';
-      inputPanel.appendChild(googleSection);
-
-      // Right panel - Request log
-      const outputPanel = el('div', 'output-panel');
-      const tableHeader = el('div', 'table-header');
-      ['Time', 'Method', 'Domain', 'Path', 'Status', 'ms'].forEach(function(t) {
-        tableHeader.appendChild(el('div', null, t));
-      });
-      const logList = el('div', 'log-list');
-      logList.id = 'logList';
-      logList.appendChild(el('div', 'hint', 'Run an example to see requests here'));
-      const detailPanel = el('div', 'detail-panel');
-      detailPanel.id = 'detailPanel';
-      detailPanel.appendChild(el('div', 'hint', 'Select a request to view details'));
-
-      outputPanel.appendChild(tableHeader);
-      outputPanel.appendChild(logList);
-      outputPanel.appendChild(detailPanel);
-
-      mainContent.appendChild(inputPanel);
-      mainContent.appendChild(outputPanel);
-
-      // Initialize Google OAuth
-      if (window.GoogleOAuth) {
-        GoogleOAuth.init(googleSection);
-      }
-    }
-
-    // Check extension on load
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', function() { setTimeout(checkExtension, 100); });
-    } else {
-      setTimeout(checkExtension, 100);
-    }
-  </script>
+  <script type="module" src="modules/state.js"></script>
+  <script type="module" src="modules/examples.js"></script>
+  <script type="module" src="modules/pipeline.js"></script>
+  <script type="module" src="modules/context-rail.js"></script>
+  <script type="module" src="modules/composer.js"></script>
+  <script type="module" src="modules/json-tree.js"></script>
+  <script type="module" src="modules/telemetry.js"></script>
+  <script type="module" src="modules/copy-export.js"></script>
+  <script type="module" src="modules/keyboard.js"></script>
+  <script type="module" src="modules/timing.js"></script>
+  <script type="module" src="modules/resize.js"></script>
+  <script type="module" src="modules/init.js"></script>
 </body>
 </html>

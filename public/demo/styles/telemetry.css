@@ -1,0 +1,204 @@
+/* Bridge Workbench - Telemetry Deck */
+/* Response Status + Metrics + Inspector */
+
+.telemetry {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.telemetry-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Status Header */
+.telemetry-header {
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.status-code {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+}
+.status-code.success { color: var(--success); }
+.status-code.error { color: var(--error); }
+.status-code.warning { color: var(--warning); }
+
+.status-text {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.status-duration {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text);
+}
+
+/* Metrics Row */
+.metrics-row {
+  display: flex;
+  gap: var(--space-lg);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.metric {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.metric-value {
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+
+/* CORS Badge */
+.cors-bypassed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: #e8f0fe;
+  color: var(--flow-tunnel);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* Injected Headers Section */
+.injected-section {
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-alt);
+}
+
+.injected-header-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--success);
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.injected-row {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: var(--space-xs) 0;
+  color: var(--text);
+}
+
+.injected-row .header-name {
+  color: var(--muted);
+}
+
+/* Response Content */
+.response-content {
+  flex: 1;
+  overflow: auto;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.response-section {
+  margin-bottom: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.response-section-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  cursor: pointer;
+}
+
+.response-section-title .arrow {
+  font-size: 8px;
+  transition: transform 0.2s;
+}
+
+.response-section-title.collapsed .arrow {
+  transform: rotate(-90deg);
+}
+
+.response-body {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+}
+
+/* Empty State */
+.telemetry-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted);
+  text-align: center;
+  padding: var(--space-xl);
+}
+
+.telemetry-empty svg {
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--space-md);
+  opacity: 0.5;
+}
+
+.telemetry-empty h3 {
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: var(--space-xs);
+}
+
+.telemetry-empty p {
+  font-size: 12px;
+}
+
+/* Error State */
+.error-content {
+  background: #fce8e6;
+  border-color: var(--error);
+  color: var(--error);
+}

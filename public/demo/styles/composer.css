@@ -1,0 +1,312 @@
+/* Bridge Workbench - Composer Pane */
+/* Command Bar + Pipeline Visualizer + Code Editor */
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* Command Bar */
+.command-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.method-select {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  min-width: 70px;
+}
+
+.url-input {
+  flex: 1;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--bg);
+}
+.url-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.command-bar.loading .url-input {
+  border-bottom: 2px solid var(--accent);
+  animation: progress-pulse 1s ease-in-out infinite;
+}
+
+@keyframes progress-pulse {
+  0%, 100% { border-bottom-color: var(--accent); }
+  50% { border-bottom-color: var(--border); }
+}
+
+/* Pipeline Visualizer */
+.pipeline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  min-height: 44px;
+}
+
+.pipeline-node {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.pipeline-node.active {
+  background: #e6f4ea;
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.pipeline-node.injector {
+  background: #e6f4ea;
+  border-color: var(--flow-injector);
+  color: var(--flow-injector);
+}
+
+.pipeline-node.session {
+  background: #f3e8ff;
+  border-color: var(--flow-session);
+  color: var(--flow-session);
+}
+
+.pipeline-node.cors {
+  background: #e8f0fe;
+  border-color: var(--flow-tunnel);
+  color: var(--flow-tunnel);
+}
+
+.pipeline-arrow {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Code Editor Area */
+.editor-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editor-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.editor-tab {
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.editor-tab:hover { color: var(--text); }
+.editor-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.editor-content {
+  flex: 1;
+  overflow: auto;
+  padding: var(--space-md);
+}
+
+.body-editor {
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  padding: var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  resize: none;
+}
+.body-editor:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Ghost Headers */
+.ghost-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--panel);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-sm);
+  opacity: 0.6;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.ghost-header .lock-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--success);
+}
+
+.ghost-header .header-name { color: var(--muted); }
+.ghost-header .header-value { color: var(--text); flex: 1; }
+.ghost-header .badge {
+  font-size: 9px;
+  padding: 1px 4px;
+  background: #e6f4ea;
+  color: var(--success);
+  border-radius: 2px;
+}
+
+/* Action Bar */
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.action-bar .btn-run { min-width: 80px; }
+
+/* Site Picker Modal */
+.site-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.site-picker {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 320px;
+  max-width: 480px;
+  max-height: 400px;
+  overflow: hidden;
+}
+
+.site-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.site-picker-header h3 {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.site-picker-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px;
+}
+.site-picker-close:hover { color: var(--text); }
+
+.site-picker-body {
+  padding: var(--space-sm);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.site-picker-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.site-picker-error {
+  padding: var(--space-md);
+  color: var(--error);
+  font-size: 11px;
+  text-align: center;
+}
+
+.site-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.site-picker-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text);
+  transition: background 0.1s;
+}
+
+.site-picker-item:hover {
+  background: var(--panel);
+}
+
+.site-picker-item .site-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+}
+
+.site-picker-item .site-url {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

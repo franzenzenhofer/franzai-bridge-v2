@@ -1,0 +1,149 @@
+/* Bridge Workbench - Layout */
+/* 3-pane fixed viewport IDE layout */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+/* Status Bar - Top */
+.status-bar {
+  height: var(--status-bar-height);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-md);
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  gap: var(--space-md);
+}
+
+.back-link {
+  color: var(--muted);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+}
+.back-link:hover { color: var(--accent); }
+
+.status-bar .title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-bright);
+}
+
+.status-bar .status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 11px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.status-dot.checking { background: var(--warning); animation: pulse 1s infinite; }
+.status-dot.ready { background: var(--success); }
+.status-dot.error { background: var(--error); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Workbench - 3-pane layout with resize handles */
+.workbench {
+  display: flex;
+  height: calc(100vh - var(--status-bar-height));
+  position: relative;
+}
+
+.context-rail {
+  width: var(--context-rail-width);
+  background: var(--bg-alt);
+  overflow-y: auto;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.composer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.telemetry {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Resize Handles */
+.resize-handle {
+  width: 6px;
+  background: var(--border);
+  cursor: col-resize;
+  position: relative;
+  flex-shrink: 0;
+  z-index: 10;
+  transition: background 0.15s;
+}
+
+.resize-handle:hover,
+.resize-handle.active {
+  background: var(--accent);
+}
+
+/* Ghost Overlay - Extension not detected */
+.ghost-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.95);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.ghost-overlay.visible { display: flex; }
+
+.ghost-content {
+  text-align: center;
+  color: var(--muted);
+}
+
+.ghost-content svg { margin-bottom: var(--space-lg); }
+.ghost-content h2 { color: var(--text); margin-bottom: var(--space-sm); font-size: 18px; }
+.ghost-content p { margin-bottom: var(--space-lg); }
+
+.install-btn {
+  display: inline-block;
+  background: var(--accent);
+  color: white;
+  padding: var(--space-md) var(--space-xl);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+}
+.install-btn:hover { background: #1557b0; }
