@@ -1,0 +1,140 @@
+/* Google OAuth Section Styles */
+.google-section {
+  border-top: 2px solid var(--border);
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+.google-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.google-header svg { width: 18px; height: 18px; }
+.google-header .title { font-weight: 600; font-size: 12px; color: var(--text); }
+
+.google-content { padding: 12px; }
+
+.google-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px;
+  background: var(--panel);
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.google-status .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.google-status .dot.connected { background: var(--success); }
+.google-status .email { font-family: var(--font-mono); color: var(--text); }
+.google-status .not-connected { color: var(--muted); }
+
+.scope-checkboxes { margin-bottom: 12px; }
+.scope-checkboxes label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 6px;
+  background: var(--bg);
+}
+.scope-checkboxes label:hover { background: var(--panel); }
+.scope-checkboxes input[type="checkbox"] { margin-top: 2px; }
+.scope-checkboxes .scope-name { font-weight: 500; font-size: 11px; color: var(--text); }
+.scope-checkboxes .scope-desc { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+.scope-granted {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.scope-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--panel);
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--text);
+}
+.scope-badge.granted { background: #e6f4ea; color: var(--success); }
+.scope-badge.missing { background: var(--panel); color: var(--muted); }
+
+.google-btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.google-btn:hover { background: var(--panel); }
+.google-btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.google-btn.primary:hover { background: #1557b0; }
+.google-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.google-btn-row { display: flex; gap: 8px; margin-bottom: 12px; }
+
+.api-test-section {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-top: 12px;
+}
+.api-test-header {
+  padding: 8px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--text);
+}
+.api-test-content { padding: 8px; }
+.api-test-content select {
+  width: 100%;
+  padding: 6px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+}
+.api-test-content .btn-row { display: flex; gap: 8px; }
+
+.google-output {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  max-height: 200px;
+  overflow: auto;
+}
+.google-output pre {
+  margin: 0;
+  padding: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.google-output.error { border-color: var(--error); }
+.google-output.error pre { color: var(--error); }
