@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FranzAI Bridge V2",
-  "version": "2.0.59",
+  "version": "2.0.61",
   "description": "CORS-bypass fetch bridge with key injection and a sidepanel inspector.",
   "minimum_chrome_version": "111",
   "icons": {
@@ -16,8 +16,9 @@
     "activeTab",
     "identity"
   ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwt1inEwUtIJMy4ym3RrOW/hIHbHmiew47k9DaKAtt6x7SKJOohNyFauu67yxc++ntkX5PRBR4DBpOcUzGqZ+bcLx3cnqpgo/rcpyCDgF58gVs8fVj1LBSACTJPSXBQR0jfyShtjze9FzfWNKnrtMByx6R1DZt1MPG9sAZoUms4wEAWG0EK/XMEbD5uxdDZw+KHK6nTX9zqwCNxfW2zsrWZtOOuXGTC40X95zL8d7MWbHfut8xyDFzoJiZhGfDF0YFHNWiToNHkpDr3qBAv1H0UeSiO3gxYcmImvms40KeHE70FcAMuNmEhYgJcl5XVza52LINMM2kEzwmGTbFjS6TwIDAQAB",
   "oauth2": {
-    "client_id": "PLACEHOLDER.apps.googleusercontent.com",
+    "client_id": "119416185502-kj2fesvkc63o84pojt7537e6gfrkhka0.apps.googleusercontent.com",
     "scopes": []
   },
   "action": {
