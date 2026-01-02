@@ -29,3 +29,12 @@ npm run dev        # Watch mode for development
 - Monospace fonts for technical data
 - Clean, professional appearance
 - Keyboard shortcuts for power users
+
+### MODULAR CODE - CRITICAL
+**Never make big files bigger. Always split into separate modules.**
+- Max ~150 lines per file (hard limit)
+- Extract inline scripts to separate `.js`/`.ts` files
+- One feature = one file
+- Shared utilities go in `src/shared/`
+- Demo page scripts go in `demo/*.js`
+- If a file is getting too long, refactor FIRST before adding more code

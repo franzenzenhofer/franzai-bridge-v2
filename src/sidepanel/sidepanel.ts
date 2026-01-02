@@ -3,6 +3,7 @@ import { BG_EVT, BG_MSG, type BgEvent } from "../shared/messages";
 import { createLogger } from "../shared/logger";
 import { sendRuntimeMessage } from "../shared/runtime";
 import { BRIDGE_VERSION } from "../shared/constants";
+import { initGoogleAccount } from "./google-account";
 
 type BgResp<T> = {
   ok: boolean;
@@ -1364,6 +1365,12 @@ async function loadAll() {
 
   renderLogs();
   renderSettings();
+
+  // Initialize Google Account section
+  const googleContainer = document.getElementById("googleAccountContainer");
+  if (googleContainer) {
+    initGoogleAccount(googleContainer);
+  }
 
   if (selectedLogId && !logs.some((x) => x.id === selectedLogId)) {
     selectedLogId = null;

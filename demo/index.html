@@ -7,6 +7,7 @@
   <title>FranzAI Bridge Demo - Live API Testing</title>
   <meta name="description" content="Test AI API calls with FranzAI Bridge. Requires the Chrome extension.">
   <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="google-oauth.css">
   <style>
     /* DevTools Light Mode - Exact Match to Extension Sidepanel */
     :root {
@@ -233,6 +234,7 @@
 
   <main class="layout" id="mainContent"></main>
 
+  <script src="google-oauth.js"></script>
   <script>
     let extensionReady = false;
     let logs = [];
@@ -352,6 +354,12 @@
       inputPanel.appendChild(promptSection);
       inputPanel.appendChild(btnSection);
 
+      // Google OAuth section
+      const googleSection = document.createElement('div');
+      googleSection.className = 'google-section';
+      googleSection.id = 'googleOAuthSection';
+      inputPanel.appendChild(googleSection);
+
       // Output panel
       const outputPanel = document.createElement('div');
       outputPanel.className = 'output-panel';
@@ -386,6 +394,11 @@
 
       mainContent.appendChild(inputPanel);
       mainContent.appendChild(outputPanel);
+
+      // Initialize Google OAuth section
+      if (window.GoogleOAuth) {
+        window.GoogleOAuth.init(googleSection);
+      }
     }
 
     function getProviderConfig(provider) {
