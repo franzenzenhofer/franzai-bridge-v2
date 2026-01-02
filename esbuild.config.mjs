@@ -7,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "package.json"), "utf8"));
 
 const isWatch = process.argv.includes("--watch");
+const isEditor = process.argv.includes("--editor");
 const outdir = "dist";
 
 function copyDir(src, dest) {
@@ -70,7 +71,40 @@ async function buildOnce() {
   });
 }
 
-if (isWatch) {
+// Editor build configuration
+const editorConfig = {
+  bundle: true,
+  sourcemap: true,
+  target: "es2020",
+  format: "esm",
+  platform: "browser",
+  define: {
+    __BRIDGE_VERSION__: JSON.stringify(pkg.version)
+  },
+  entryPoints: { "editor": "src/editor/main.ts" },
+  outdir: "public/editor",
+  external: []
+};
+
+async function buildEditor() {
+  await esbuild.build(editorConfig);
+}
+
+async function watchEditor() {
+  const ctx = await esbuild.context(editorConfig);
+  await ctx.watch();
+  console.log("Watching editor... (public/editor/ updates on changes)");
+}
+
+// Main execution
+if (isEditor) {
+  if (isWatch) {
+    await watchEditor();
+  } else {
+    await buildEditor();
+    console.log("Editor build complete: public/editor/");
+  }
+} else if (isWatch) {
   rimraf(outdir);
   copyStatic();
 

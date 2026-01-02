@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="franzai-bridge" content="enabled">
+  <title>Bridge AI IDE</title>
+  <link rel="stylesheet" href="styles/variables.css">
+  <link rel="stylesheet" href="styles/layout.css">
+  <link rel="stylesheet" href="styles/editor.css">
+  <link rel="stylesheet" href="styles/chat.css">
+  <link rel="stylesheet" href="styles/console.css">
+</head>
+<body>
+  <div class="status-bar" id="status-bar"></div>
+
+  <div class="workbench">
+    <div class="editor-pane" id="editor-pane"></div>
+    <div class="resize-handle" id="resize-handle"></div>
+    <div class="chat-pane" id="chat-pane"></div>
+  </div>
+
+  <div class="console-pane" id="console-pane"></div>
+
+  <div class="ghost-overlay" id="ghost-overlay">
+    <div class="ghost-content">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+      <h2>Bridge Extension Required</h2>
+      <p>Install the FranzAI Bridge extension to use the AI IDE</p>
+      <a href="https://bridge.franzai.com" class="install-btn">Install Extension</a>
+    </div>
+  </div>
+
+  <script type="module" src="editor.js"></script>
+</body>
+</html>

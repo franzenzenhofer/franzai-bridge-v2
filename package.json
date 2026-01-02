@@ -8,7 +8,9 @@
     "build": "node scripts/bump-version.mjs && node esbuild.config.mjs",
     "build:nobump": "node esbuild.config.mjs",
     "build:zip": "node scripts/build-zip.mjs",
+    "build:editor": "node esbuild.config.mjs --editor",
     "dev": "node esbuild.config.mjs --watch",
+    "dev:editor": "node esbuild.config.mjs --editor --watch",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest --run",
     "test:watch": "vitest",
@@ -17,7 +19,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:all": "npm run test && npm run test:e2e",
     "clean": "rm -rf dist",
-    "deploy": "npm run build:zip && npx wrangler pages deploy ./public --project-name=franzai-bridge"
+    "deploy": "npm run build:editor && npm run build:zip && npx wrangler pages deploy ./public --project-name=franzai-bridge"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
@@ -28,5 +30,14 @@
     "esbuild": "^0.25.0",
     "typescript": "^5.6.3",
     "vitest": "^1.6.0"
+  },
+  "dependencies": {
+    "@codemirror/lang-css": "^6.3.1",
+    "@codemirror/lang-html": "^6.4.11",
+    "@codemirror/lang-javascript": "^6.2.4",
+    "codemirror": "^6.0.2",
+    "highlight.js": "^11.11.1",
+    "html-to-image": "^1.11.13",
+    "marked": "^17.0.1"
   }
 }

@@ -1,0 +1,117 @@
+/* Bridge AI IDE - Editor Pane */
+
+.editor-pane-header {
+  display: flex;
+  align-items: center;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  gap: var(--space-sm);
+}
+
+.view-tabs {
+  display: flex;
+  gap: 2px;
+}
+
+.view-tab {
+  padding: var(--space-xs) var(--space-md);
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s;
+}
+
+.view-tab:hover {
+  background: var(--panel-lighter);
+  color: var(--text);
+}
+
+.view-tab.active {
+  background: var(--accent);
+  color: white;
+}
+
+.editor-actions {
+  display: flex;
+  gap: var(--space-xs);
+  margin-left: auto;
+}
+
+.editor-btn {
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 11px;
+  color: var(--text);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.editor-btn:hover {
+  background: var(--panel-lighter);
+}
+
+.editor-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* CodeMirror Container */
+.code-container {
+  flex: 1;
+  overflow: hidden;
+  display: none;
+}
+
+.code-container.visible {
+  display: block;
+}
+
+.cm-editor {
+  height: 100%;
+  font-size: 13px;
+}
+
+.cm-scroller {
+  font-family: var(--font-mono);
+}
+
+/* Preview Container */
+.preview-container {
+  flex: 1;
+  overflow: hidden;
+  display: none;
+  background: var(--bg);
+}
+
+.preview-container.visible {
+  display: block;
+}
+
+.preview-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: white;
+}
+
+/* Loading Indicator */
+.loading-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--muted);
+  display: none;
+}
+
+.loading-indicator.visible {
+  display: block;
+}

@@ -1,0 +1,86 @@
+/* Bridge AI IDE - Console Pane */
+
+.console-header {
+  display: flex;
+  align-items: center;
+  padding: var(--space-xs) var(--space-md);
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  gap: var(--space-sm);
+}
+
+.console-title {
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.console-clear-btn {
+  margin-left: auto;
+  padding: 2px var(--space-sm);
+  border: none;
+  background: transparent;
+  font-size: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.console-clear-btn:hover {
+  background: var(--panel-lighter);
+  color: var(--text);
+}
+
+/* Console Log List */
+.console-logs {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-xs) var(--space-md);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.console-log {
+  display: flex;
+  gap: var(--space-sm);
+  padding: 2px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.console-log:last-child {
+  border-bottom: none;
+}
+
+.console-log-type {
+  width: 40px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.console-log-type.log { color: var(--text); }
+.console-log-type.info { color: var(--accent); }
+.console-log-type.warn { color: var(--warning); }
+.console-log-type.error { color: var(--error); }
+
+.console-log-message {
+  flex: 1;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.console-log-time {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+/* Empty State */
+.console-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted);
+  font-size: 12px;
+}

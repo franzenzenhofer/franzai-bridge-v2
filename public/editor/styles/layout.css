@@ -1,0 +1,160 @@
+/* Bridge AI IDE - Layout */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+
+/* Status Bar */
+.status-bar {
+  height: var(--status-bar-height);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-md);
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  gap: var(--space-md);
+}
+
+.status-bar .logo {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-bright);
+}
+
+.status-bar .version {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.status-bar .keys {
+  display: flex;
+  gap: var(--space-sm);
+  margin-left: auto;
+}
+
+.key-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.key-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dot-inactive);
+}
+
+.key-dot.active {
+  background: var(--dot-active);
+}
+
+/* Workbench - 2-pane layout */
+.workbench {
+  display: flex;
+  height: calc(100vh - var(--status-bar-height) - var(--console-height));
+}
+
+.editor-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 300px;
+}
+
+.resize-handle {
+  width: 6px;
+  background: var(--border);
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.resize-handle:hover,
+.resize-handle.active {
+  background: var(--accent);
+}
+
+.chat-pane {
+  width: var(--chat-width);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-alt);
+  border-left: 1px solid var(--border);
+  flex-shrink: 0;
+  min-width: 280px;
+}
+
+/* Console Pane */
+.console-pane {
+  height: var(--console-height);
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Ghost Overlay */
+.ghost-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.98);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.ghost-overlay.visible {
+  display: flex;
+}
+
+.ghost-content {
+  text-align: center;
+  color: var(--muted);
+}
+
+.ghost-content svg {
+  margin-bottom: var(--space-lg);
+  opacity: 0.5;
+}
+
+.ghost-content h2 {
+  color: var(--text);
+  margin-bottom: var(--space-sm);
+  font-size: 18px;
+}
+
+.ghost-content p {
+  margin-bottom: var(--space-lg);
+}
+
+.install-btn {
+  display: inline-block;
+  background: var(--accent);
+  color: white;
+  padding: var(--space-md) var(--space-xl);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.install-btn:hover {
+  background: #1557b0;
+}
