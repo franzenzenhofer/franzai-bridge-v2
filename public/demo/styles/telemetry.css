@@ -6,6 +6,7 @@
   flex-direction: column;
   background: var(--bg);
   overflow: hidden;
+  height: 100%;
 }
 
 .telemetry-wrapper {
@@ -13,7 +14,7 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: auto;
 }
 
 /* Status Header */
@@ -127,8 +128,11 @@
   margin-bottom: var(--space-lg);
   display: flex;
   flex-direction: column;
+}
+
+.response-section:last-child {
   flex: 1;
-  min-height: 0;
+  min-height: 200px;
 }
 
 .response-section-title {
@@ -163,8 +167,7 @@
   padding: var(--space-md);
   overflow: auto;
   flex: 1;
-  min-height: 0;
-  max-height: 100%;
+  min-height: 150px;
 }
 
 /* Empty State */

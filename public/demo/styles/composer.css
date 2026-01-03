@@ -310,3 +310,22 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .command-bar {
+    flex-wrap: wrap;
+  }
+  .url-input {
+    min-width: 0;
+    width: 100%;
+    order: 3;
+    margin-top: var(--space-sm);
+  }
+  .pipeline {
+    flex-wrap: wrap;
+  }
+  .body-editor {
+    min-height: 150px;
+  }
+}

@@ -1,5 +1,5 @@
 /* Bridge Workbench - Layout */
-/* 3-pane fixed viewport IDE layout */
+/* 3-pane fluid responsive IDE layout */
 
 * {
   box-sizing: border-box;
@@ -9,6 +9,7 @@
 
 html, body {
   height: 100%;
+  min-height: 100vh;
   overflow: hidden;
   background: var(--bg);
   color: var(--text);
@@ -68,23 +69,28 @@ html, body {
   50% { opacity: 0.5; }
 }
 
-/* Workbench - 3-pane layout with resize handles */
+/* Workbench - 3-pane fluid layout with resize handles */
 .workbench {
   display: flex;
   height: calc(100vh - var(--status-bar-height));
+  min-height: 0;
   position: relative;
 }
 
 .context-rail {
   width: var(--context-rail-width);
+  min-width: 150px;
+  max-width: 350px;
   background: var(--bg-alt);
   overflow-y: auto;
+  overflow-x: hidden;
   flex-shrink: 0;
   position: relative;
 }
 
 .composer {
-  flex: 1;
+  flex: 1 1 40%;
+  min-width: 250px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -92,7 +98,8 @@ html, body {
 }
 
 .telemetry {
-  flex: 1;
+  flex: 1 1 40%;
+  min-width: 250px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -147,3 +154,49 @@ html, body {
   font-weight: 500;
 }
 .install-btn:hover { background: #1557b0; }
+
+/* Responsive breakpoints */
+@media (max-width: 1200px) {
+  .context-rail {
+    width: 180px;
+    min-width: 120px;
+  }
+  .composer, .telemetry {
+    min-width: 200px;
+  }
+}
+
+@media (max-width: 900px) {
+  .workbench {
+    flex-direction: column;
+  }
+  .context-rail {
+    width: 100% !important;
+    max-width: none;
+    height: auto;
+    max-height: 200px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    border-right: none;
+  }
+  .composer, .telemetry {
+    width: 100% !important;
+    min-width: 0;
+    flex: 1;
+  }
+  .resize-handle {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .status-bar {
+    padding: 0 var(--space-sm);
+  }
+  .status-bar .title {
+    font-size: 12px;
+  }
+  .context-rail {
+    max-height: 150px;
+  }
+}
