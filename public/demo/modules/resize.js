@@ -1,9 +1,9 @@
 // Bridge Workbench - Resizable Panes
 // Drag handles for adjusting pane widths
 
-const MIN_RAIL_WIDTH = 150;
-const MAX_RAIL_WIDTH = 350;
-const MIN_PANE_WIDTH = 250;
+const MIN_RAIL_WIDTH = 120;
+const MAX_RAIL_WIDTH = 400;
+const MIN_PANE_WIDTH = 150;
 
 let isResizing = false;
 let currentHandle = null;
@@ -31,15 +31,23 @@ function init() {
   // Load saved widths
   loadWidths();
 
-  // Event listeners
+  // Event listeners - use both mouse and pointer events for compatibility
   handle1.addEventListener('mousedown', onMouseDown);
   handle2.addEventListener('mousedown', onMouseDown);
+  handle1.addEventListener('pointerdown', onMouseDown);
+  handle2.addEventListener('pointerdown', onMouseDown);
   document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('pointermove', onMouseMove);
   document.addEventListener('mouseup', onMouseUp);
+  document.addEventListener('pointerup', onMouseUp);
 
   // Double-click to reset
   handle1.addEventListener('dblclick', resetWidths);
   handle2.addEventListener('dblclick', resetWidths);
+
+  // Prevent text selection during drag
+  handle1.style.touchAction = 'none';
+  handle2.style.touchAction = 'none';
 }
 
 function onMouseDown(e) {

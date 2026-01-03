@@ -107,18 +107,38 @@ html, body {
 
 /* Resize Handles */
 .resize-handle {
-  width: 6px;
+  width: 8px;
   background: var(--border);
   cursor: col-resize;
   position: relative;
   flex-shrink: 0;
   z-index: 10;
-  transition: background 0.15s;
+  transition: background 0.15s, width 0.15s;
+}
+
+.resize-handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 40px;
+  background: var(--muted);
+  border-radius: 2px;
+  opacity: 0.4;
 }
 
 .resize-handle:hover,
 .resize-handle.active {
   background: var(--accent);
+  width: 10px;
+}
+
+.resize-handle:hover::before,
+.resize-handle.active::before {
+  background: white;
+  opacity: 0.8;
 }
 
 /* Ghost Overlay - Extension not detected */
