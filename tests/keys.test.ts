@@ -1,6 +1,6 @@
 /// <reference types="vitest" />
 import { describe, expect, it } from "vitest";
-import { getConfiguredKeyNames } from "../src/shared/keys";
+import { getConfiguredKeyNames, normalizeKeyName, resolveKeyValue } from "../src/shared/keys";
 
 describe("getConfiguredKeyNames", () => {
   it("returns names with non-empty values", () => {
@@ -22,5 +22,15 @@ describe("getConfiguredKeyNames", () => {
     };
 
     expect(getConfiguredKeyNames(env)).toEqual([]);
+  });
+
+  it("normalizes Gemini alias to Google", () => {
+    expect(normalizeKeyName("GEMINI_API_KEY")).toBe("GOOGLE_API_KEY");
+  });
+
+  it("exposes Google when only Gemini is set", () => {
+    const env = { GEMINI_API_KEY: "legacy" };
+    expect(resolveKeyValue(env, "GOOGLE_API_KEY")).toBe("legacy");
+    expect(getConfiguredKeyNames(env)).toEqual(["GOOGLE_API_KEY"]);
   });
 });
