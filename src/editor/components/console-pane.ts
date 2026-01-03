@@ -25,6 +25,12 @@ function render(): void {
   const container = document.getElementById("console-pane");
   if (!container) return;
 
+  const previousLogs = container.querySelector(".console-logs") as HTMLDivElement | null;
+  const prevScrollTop = previousLogs?.scrollTop ?? 0;
+  const wasAtBottom = previousLogs
+    ? previousLogs.scrollTop + previousLogs.clientHeight >= previousLogs.scrollHeight - 8
+    : true;
+
   const state = getState();
 
   // Clear using DOM method
@@ -52,9 +58,13 @@ function render(): void {
     for (const log of state.logs) {
       logsContainer.appendChild(renderLog(log));
     }
-    // Auto-scroll to bottom
+    // Preserve user scroll unless they're already at the bottom.
     requestAnimationFrame(() => {
-      logsContainer.scrollTop = logsContainer.scrollHeight;
+      if (wasAtBottom) {
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+      } else {
+        logsContainer.scrollTop = Math.min(prevScrollTop, logsContainer.scrollHeight);
+      }
     });
   }
 

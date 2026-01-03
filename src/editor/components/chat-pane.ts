@@ -24,6 +24,12 @@ function render(): void {
   const container = document.getElementById("chat-pane");
   if (!container) return;
 
+  const previousList = container.querySelector(".messages-list") as HTMLDivElement | null;
+  const prevScrollTop = previousList?.scrollTop ?? 0;
+  const wasAtBottom = previousList
+    ? previousList.scrollTop + previousList.clientHeight >= previousList.scrollHeight - 8
+    : true;
+
   const state = getState();
 
   // Clear using DOM method
@@ -89,9 +95,13 @@ function render(): void {
 
   container.appendChild(messagesList);
 
-  // Scroll to bottom
+  // Preserve user scroll unless they're already at the bottom.
   requestAnimationFrame(() => {
-    messagesList.scrollTop = messagesList.scrollHeight;
+    if (wasAtBottom) {
+      messagesList.scrollTop = messagesList.scrollHeight;
+    } else {
+      messagesList.scrollTop = Math.min(prevScrollTop, messagesList.scrollHeight);
+    }
   });
 
   // Input area
