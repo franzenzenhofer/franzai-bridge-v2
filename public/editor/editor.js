@@ -180,22 +180,22 @@ async function checkExtension() {
       ghostOverlay?.classList.remove("visible");
       await new Promise((r) => setTimeout(r, 100));
       console.log("[Bridge AI IDE] Available keys array:", win.franzai.keys);
-      const [hasOpenAI, hasAnthropic, hasGemini] = await Promise.all([
+      const [hasOpenAI, hasAnthropic, hasGoogle] = await Promise.all([
         win.franzai.hasApiKey("OPENAI_API_KEY"),
         win.franzai.hasApiKey("ANTHROPIC_API_KEY"),
-        win.franzai.hasApiKey("GEMINI_API_KEY")
+        win.franzai.hasApiKey("GOOGLE_API_KEY")
       ]);
       console.log("[Bridge AI IDE] Key detection via hasApiKey:", {
         openai: hasOpenAI,
         anthropic: hasAnthropic,
-        gemini: hasGemini
+        gemini: hasGoogle
       });
       setState({
         extension: { ready: true, version: result.version },
         keys: {
           openai: hasOpenAI,
           anthropic: hasAnthropic,
-          google: hasGemini
+          google: hasGoogle
         }
       });
     }
@@ -27592,6 +27592,9 @@ function initConsolePane() {
 function render3() {
   const container = document.getElementById("console-pane");
   if (!container) return;
+  const previousLogs = container.querySelector(".console-logs");
+  const prevScrollTop = previousLogs?.scrollTop ?? 0;
+  const wasAtBottom = previousLogs ? previousLogs.scrollTop + previousLogs.clientHeight >= previousLogs.scrollHeight - 8 : true;
   const state2 = getState();
   while (container.firstChild) {
     container.removeChild(container.firstChild);
@@ -27611,7 +27614,11 @@ function render3() {
       logsContainer.appendChild(renderLog(log));
     }
     requestAnimationFrame(() => {
-      logsContainer.scrollTop = logsContainer.scrollHeight;
+      if (wasAtBottom) {
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+      } else {
+        logsContainer.scrollTop = Math.min(prevScrollTop, logsContainer.scrollHeight);
+      }
     });
   }
   container.appendChild(logsContainer);
@@ -27908,6 +27915,9 @@ function initChatPane() {
 function render4() {
   const container = document.getElementById("chat-pane");
   if (!container) return;
+  const previousList = container.querySelector(".messages-list");
+  const prevScrollTop = previousList?.scrollTop ?? 0;
+  const wasAtBottom = previousList ? previousList.scrollTop + previousList.clientHeight >= previousList.scrollHeight - 8 : true;
   const state2 = getState();
   while (container.firstChild) {
     container.removeChild(container.firstChild);
@@ -27957,7 +27967,11 @@ function render4() {
   }
   container.appendChild(messagesList);
   requestAnimationFrame(() => {
-    messagesList.scrollTop = messagesList.scrollHeight;
+    if (wasAtBottom) {
+      messagesList.scrollTop = messagesList.scrollHeight;
+    } else {
+      messagesList.scrollTop = Math.min(prevScrollTop, messagesList.scrollHeight);
+    }
   });
   const inputArea = el("div", "chat-input-area");
   const inputWrapper = el("div", "chat-input-wrapper");
