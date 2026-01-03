@@ -687,7 +687,7 @@ function startInlineEdit(
 const BUILTIN_KEY_TARGETS: Record<string, string> = {
   "OPENAI_API_KEY": "api.openai.com",
   "ANTHROPIC_API_KEY": "api.anthropic.com",
-  "GOOGLE_API_KEY": "generativelanguage.googleapis.com",
+  "GEMINI_API_KEY": "generativelanguage.googleapis.com",
   "MISTRAL_API_KEY": "api.mistral.ai"
 };
 

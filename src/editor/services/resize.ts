@@ -25,7 +25,8 @@ export function initResizeHandle(): void {
   document.addEventListener("mousemove", (e) => {
     if (!isResizing) return;
 
-    const delta = startX - e.clientX;
+    // Chat is on the left, so dragging right increases width
+    const delta = e.clientX - startX;
     const newWidth = Math.max(280, Math.min(600, startChatWidth + delta));
 
     chatPane.style.width = `${newWidth}px`;

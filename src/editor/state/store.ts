@@ -10,13 +10,13 @@ const MAX_HISTORY = 50;
 
 const initialState: EditorState = {
   extension: { ready: false, version: null },
-  keys: { openai: false, anthropic: false, gemini: false },
+  keys: { openai: false, anthropic: false, google: false },
   view: "preview",
   code: DEFAULT_CODE,
   previousCode: "",
   history: [{ code: DEFAULT_CODE, timestamp: Date.now() }],
   historyIndex: 0,
-  model: "gpt-4o",
+  model: "gemini-2.5-flash",
   messages: [],
   isStreaming: false,
   logs: [],

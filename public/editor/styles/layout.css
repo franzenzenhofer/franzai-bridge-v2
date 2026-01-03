@@ -94,7 +94,7 @@ html, body {
   display: flex;
   flex-direction: column;
   background: var(--bg-alt);
-  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
   flex-shrink: 0;
   min-width: 280px;
 }

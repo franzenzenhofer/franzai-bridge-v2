@@ -37,13 +37,13 @@ var DEFAULT_CODE = `<!DOCTYPE html>
 var MAX_HISTORY = 50;
 var initialState = {
   extension: { ready: false, version: null },
-  keys: { openai: false, anthropic: false, gemini: false },
+  keys: { openai: false, anthropic: false, google: false },
   view: "preview",
   code: DEFAULT_CODE,
   previousCode: "",
   history: [{ code: DEFAULT_CODE, timestamp: Date.now() }],
   historyIndex: 0,
-  model: "gpt-4o",
+  model: "gemini-2.5-flash",
   messages: [],
   isStreaming: false,
   logs: [],
@@ -155,7 +155,7 @@ function render() {
   const keyConfigs = [
     { key: "openai", label: "OpenAI" },
     { key: "anthropic", label: "Claude" },
-    { key: "gemini", label: "Gemini" }
+    { key: "google", label: "Gemini" }
   ];
   for (const { key, label } of keyConfigs) {
     const indicator = el("div", "key-indicator");
@@ -178,16 +178,29 @@ async function checkExtension() {
     const result = await win.franzai.ping();
     if (result.ok) {
       ghostOverlay?.classList.remove("visible");
+      await new Promise((r) => setTimeout(r, 100));
+      console.log("[Bridge AI IDE] Available keys array:", win.franzai.keys);
+      const [hasOpenAI, hasAnthropic, hasGemini] = await Promise.all([
+        win.franzai.hasApiKey("OPENAI_API_KEY"),
+        win.franzai.hasApiKey("ANTHROPIC_API_KEY"),
+        win.franzai.hasApiKey("GEMINI_API_KEY")
+      ]);
+      console.log("[Bridge AI IDE] Key detection via hasApiKey:", {
+        openai: hasOpenAI,
+        anthropic: hasAnthropic,
+        gemini: hasGemini
+      });
       setState({
         extension: { ready: true, version: result.version },
         keys: {
-          openai: win.franzai.keys.includes("openai"),
-          anthropic: win.franzai.keys.includes("anthropic"),
-          gemini: win.franzai.keys.includes("gemini")
+          openai: hasOpenAI,
+          anthropic: hasAnthropic,
+          google: hasGemini
         }
       });
     }
-  } catch {
+  } catch (err) {
+    console.error("[Bridge AI IDE] Extension check failed:", err);
     ghostOverlay?.classList.add("visible");
   }
 }
@@ -27626,11 +27639,11 @@ function setupConsoleListener() {
 
 // src/editor/services/ai-client.ts
 var MODELS = {
-  "gpt-4o": {
+  "gpt-5-mini": {
     host: "api.openai.com",
     path: "/v1/chat/completions",
     formatRequest: (messages, system) => ({
-      model: "gpt-4o",
+      model: "gpt-5-mini",
       stream: true,
       messages: [
         { role: "system", content: system },
@@ -27649,11 +27662,11 @@ var MODELS = {
       }
     }
   },
-  "claude-sonnet": {
+  "claude-haiku-4-5": {
     host: "api.anthropic.com",
     path: "/v1/messages",
     formatRequest: (messages, system) => ({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-haiku-4-5",
       max_tokens: 8192,
       stream: true,
       system,
@@ -27670,9 +27683,9 @@ var MODELS = {
       }
     }
   },
-  "gemini-pro": {
+  "gemini-2.5-flash": {
     host: "generativelanguage.googleapis.com",
-    path: "/v1beta/models/gemini-1.5-pro:streamGenerateContent",
+    path: "/v1beta/models/gemini-2.5-flash:generateContent",
     formatRequest: (messages, system) => ({
       contents: [
         { role: "user", parts: [{ text: system }] },
@@ -27711,6 +27724,20 @@ async function streamChat(model, messages, systemPrompt, onChunk, onDone) {
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`API error: ${response.status} - ${errorText}`);
+  }
+  if (model === "gemini-2.5-flash") {
+    try {
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        onChunk(text);
+      } else {
+        throw new Error("No text in Gemini response");
+      }
+    } finally {
+      onDone();
+    }
+    return;
   }
   const reader = response.body?.getReader();
   if (!reader) throw new Error("No response body");
@@ -27832,7 +27859,7 @@ function buildSystemPrompt() {
   const availableKeys = [];
   if (state2.keys.openai) availableKeys.push("OpenAI");
   if (state2.keys.anthropic) availableKeys.push("Anthropic");
-  if (state2.keys.gemini) availableKeys.push("Gemini");
+  if (state2.keys.google) availableKeys.push("Gemini");
   const consoleOutput = state2.logs.slice(-20).map((l) => `[${l.type.toUpperCase()}] ${l.message}`).join("\n");
   return `You are an AI coding assistant inside Bridge AI IDE. You help users build **single-page web applications** that use the FranzAI Bridge extension.
 
@@ -27873,7 +27900,7 @@ function initChatPane() {
   if (!container) return;
   render4();
   subscribe((state2, changed) => {
-    if (changed.includes("messages") || changed.includes("isStreaming") || changed.includes("model")) {
+    if (changed.includes("messages") || changed.includes("isStreaming") || changed.includes("model") || changed.includes("keys")) {
       render4();
     }
   });
@@ -27888,17 +27915,23 @@ function render4() {
   const header = el("div", "chat-header");
   header.appendChild(el("span", "chat-title", "AI Assistant"));
   const modelSelect = el("select", "model-select");
-  const models = [
-    { id: "gpt-4o", label: "GPT-4o" },
-    { id: "claude-sonnet", label: "Claude Sonnet" },
-    { id: "gemini-pro", label: "Gemini Pro" }
+  const allModels = [
+    { id: "gpt-5-mini", label: "GPT-5 Mini", keyName: "openai" },
+    { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", keyName: "anthropic" },
+    { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", keyName: "google" }
   ];
-  for (const m of models) {
+  for (const m of allModels) {
     const opt = el("option");
     opt.value = m.id;
-    opt.textContent = m.label;
-    if (m.id === state2.model) opt.selected = true;
+    const hasKey = state2.keys[m.keyName];
+    opt.textContent = hasKey ? m.label : `${m.label} (no key)`;
+    opt.disabled = !hasKey;
+    if (m.id === state2.model && hasKey) opt.selected = true;
     modelSelect.appendChild(opt);
+  }
+  const availableModels = allModels.filter((m) => state2.keys[m.keyName]);
+  if (availableModels.length > 0 && !availableModels.find((m) => m.id === state2.model)) {
+    setState({ model: availableModels[0].id });
   }
   modelSelect.onchange = () => setState({ model: modelSelect.value });
   header.appendChild(modelSelect);
@@ -28023,7 +28056,7 @@ function initResizeHandle() {
   });
   document.addEventListener("mousemove", (e) => {
     if (!isResizing) return;
-    const delta = startX - e.clientX;
+    const delta = e.clientX - startX;
     const newWidth = Math.max(280, Math.min(600, startChatWidth + delta));
     chatPane.style.width = `${newWidth}px`;
   });

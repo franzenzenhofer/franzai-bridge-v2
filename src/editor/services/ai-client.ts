@@ -13,11 +13,11 @@ interface ModelConfig {
 }
 
 const MODELS: Record<ModelId, ModelConfig> = {
-  "gpt-4o": {
+  "gpt-5-mini": {
     host: "api.openai.com",
     path: "/v1/chat/completions",
     formatRequest: (messages, system) => ({
-      model: "gpt-4o",
+      model: "gpt-5-mini",
       stream: true,
       messages: [
         { role: "system", content: system },
@@ -36,11 +36,11 @@ const MODELS: Record<ModelId, ModelConfig> = {
       }
     }
   },
-  "claude-sonnet": {
+  "claude-haiku-4-5": {
     host: "api.anthropic.com",
     path: "/v1/messages",
     formatRequest: (messages, system) => ({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-haiku-4-5",
       max_tokens: 8192,
       stream: true,
       system,
@@ -57,9 +57,9 @@ const MODELS: Record<ModelId, ModelConfig> = {
       }
     }
   },
-  "gemini-pro": {
+  "gemini-2.5-flash": {
     host: "generativelanguage.googleapis.com",
-    path: "/v1beta/models/gemini-1.5-pro:streamGenerateContent",
+    path: "/v1beta/models/gemini-2.5-flash:generateContent",
     formatRequest: (messages, system) => ({
       contents: [
         { role: "user", parts: [{ text: system }] },
@@ -70,7 +70,7 @@ const MODELS: Record<ModelId, ModelConfig> = {
       ]
     }),
     parseChunk: (line) => {
-      // Gemini uses different streaming format
+      // Gemini non-streaming: parse full JSON response
       try {
         const parsed = JSON.parse(line);
         return parsed.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
@@ -115,6 +115,24 @@ export async function streamChat(
     throw new Error(`API error: ${response.status} - ${errorText}`);
   }
 
+  // Gemini returns a single JSON blob (not streaming)
+  // Handle it separately from SSE-based streaming APIs
+  if (model === "gemini-2.5-flash") {
+    try {
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        onChunk(text);
+      } else {
+        throw new Error("No text in Gemini response");
+      }
+    } finally {
+      onDone();
+    }
+    return;
+  }
+
+  // SSE streaming for OpenAI and Anthropic
   const reader = response.body?.getReader();
   if (!reader) throw new Error("No response body");
 

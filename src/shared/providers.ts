@@ -18,7 +18,7 @@ export function builtinProviderRules(): InjectionRule[] {
     {
       hostPattern: "generativelanguage.googleapis.com",
       injectHeaders: {
-        "x-goog-api-key": "${GOOGLE_API_KEY}"
+        "x-goog-api-key": "${GEMINI_API_KEY}"
       }
     },
     {

@@ -11,7 +11,7 @@ export interface EditorState {
   keys: {
     openai: boolean;
     anthropic: boolean;
-    gemini: boolean;
+    google: boolean;
   };
 
   // Editor - Single HTML file
@@ -42,7 +42,7 @@ export interface HistoryEntry {
   timestamp: number;
 }
 
-export type ModelId = "gpt-4o" | "claude-sonnet" | "gemini-pro";
+export type ModelId = "gpt-5-mini" | "claude-haiku-4-5" | "gemini-2.5-flash";
 
 export interface ChatMessage {
   role: "user" | "assistant";

@@ -1,6 +1,6 @@
 {
   "name": "franzai-bridge-v2",
-  "version": "2.0.69",
+  "version": "2.0.77",
   "private": true,
   "type": "module",
   "description": "FranzAI Bridge V2 - MV3 extension that routes cross-origin fetch through a secure background bridge.",
@@ -19,7 +19,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:all": "npm run test && npm run test:e2e",
     "clean": "rm -rf dist",
-    "deploy": "npm run build:editor && npm run build:zip && npx wrangler pages deploy ./public --project-name=franzai-bridge"
+    "deploy": "npm run build && npx wrangler pages deploy ./public --project-name=franzai-bridge --commit-dirty=true"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",

@@ -14,7 +14,7 @@ export function initChatPane(): void {
 
   render();
   subscribe((state, changed) => {
-    if (changed.includes("messages") || changed.includes("isStreaming") || changed.includes("model")) {
+    if (changed.includes("messages") || changed.includes("isStreaming") || changed.includes("model") || changed.includes("keys")) {
       render();
     }
   });
@@ -36,18 +36,27 @@ function render(): void {
   header.appendChild(el("span", "chat-title", "AI Assistant"));
 
   const modelSelect = el("select", "model-select") as HTMLSelectElement;
-  const models: { id: ModelId; label: string }[] = [
-    { id: "gpt-4o", label: "GPT-4o" },
-    { id: "claude-sonnet", label: "Claude Sonnet" },
-    { id: "gemini-pro", label: "Gemini Pro" }
+  const allModels: { id: ModelId; label: string; keyName: "openai" | "anthropic" | "google" }[] = [
+    { id: "gpt-5-mini", label: "GPT-5 Mini", keyName: "openai" },
+    { id: "claude-haiku-4-5", label: "Claude Haiku 4.5", keyName: "anthropic" },
+    { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", keyName: "google" }
   ];
 
-  for (const m of models) {
-    const opt = el("option");
+  // Show all models, but disable ones without API keys
+  for (const m of allModels) {
+    const opt = el("option") as HTMLOptionElement;
     opt.value = m.id;
-    opt.textContent = m.label;
-    if (m.id === state.model) opt.selected = true;
+    const hasKey = state.keys[m.keyName];
+    opt.textContent = hasKey ? m.label : `${m.label} (no key)`;
+    opt.disabled = !hasKey;
+    if (m.id === state.model && hasKey) opt.selected = true;
     modelSelect.appendChild(opt);
+  }
+
+  // If current model is not available, switch to first available
+  const availableModels = allModels.filter(m => state.keys[m.keyName]);
+  if (availableModels.length > 0 && !availableModels.find(m => m.id === state.model)) {
+    setState({ model: availableModels[0].id });
   }
 
   modelSelect.onchange = () => setState({ model: modelSelect.value as ModelId });

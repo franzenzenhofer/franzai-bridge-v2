@@ -12,7 +12,7 @@ export function buildSystemPrompt(): string {
   const availableKeys: string[] = [];
   if (state.keys.openai) availableKeys.push("OpenAI");
   if (state.keys.anthropic) availableKeys.push("Anthropic");
-  if (state.keys.gemini) availableKeys.push("Gemini");
+  if (state.keys.google) availableKeys.push("Gemini");
 
   const consoleOutput = state.logs
     .slice(-20)

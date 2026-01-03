@@ -118,6 +118,8 @@ if (isEditor) {
   await ctx.watch();
   console.log("Watching... (dist/ updates on changes)");
 } else {
+  // Build both extension AND editor
   await buildOnce();
-  console.log("Build complete: dist/");
+  await buildEditor();
+  console.log("Build complete: dist/ + public/editor/");
 }

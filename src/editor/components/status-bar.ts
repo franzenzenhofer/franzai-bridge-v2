@@ -41,7 +41,7 @@ function render(): void {
   const keyConfigs = [
     { key: "openai", label: "OpenAI" },
     { key: "anthropic", label: "Claude" },
-    { key: "gemini", label: "Gemini" }
+    { key: "google", label: "Gemini" }
   ] as const;
 
   for (const { key, label } of keyConfigs) {
@@ -60,7 +60,13 @@ export async function checkExtension(): Promise<void> {
   const ghostOverlay = document.getElementById("ghost-overlay");
 
   // Check if franzai is available
-  const win = window as Window & { franzai?: { ping: () => Promise<{ ok: boolean; version: string }>; keys: string[] } };
+  const win = window as Window & {
+    franzai?: {
+      ping: () => Promise<{ ok: boolean; version: string }>;
+      keys: string[];
+      hasApiKey: (name: string) => Promise<boolean>;
+    }
+  };
 
   if (!win.franzai) {
     ghostOverlay?.classList.add("visible");
@@ -72,16 +78,36 @@ export async function checkExtension(): Promise<void> {
     if (result.ok) {
       ghostOverlay?.classList.remove("visible");
 
+      // Wait a bit for keys to populate, then check
+      await new Promise(r => setTimeout(r, 100));
+
+      // Debug: log available keys
+      console.log("[Bridge AI IDE] Available keys array:", win.franzai.keys);
+
+      // Use hasApiKey for more reliable detection
+      const [hasOpenAI, hasAnthropic, hasGemini] = await Promise.all([
+        win.franzai.hasApiKey("OPENAI_API_KEY"),
+        win.franzai.hasApiKey("ANTHROPIC_API_KEY"),
+        win.franzai.hasApiKey("GEMINI_API_KEY")
+      ]);
+
+      console.log("[Bridge AI IDE] Key detection via hasApiKey:", {
+        openai: hasOpenAI,
+        anthropic: hasAnthropic,
+        gemini: hasGemini
+      });
+
       setState({
         extension: { ready: true, version: result.version },
         keys: {
-          openai: win.franzai.keys.includes("openai"),
-          anthropic: win.franzai.keys.includes("anthropic"),
-          gemini: win.franzai.keys.includes("gemini")
+          openai: hasOpenAI,
+          anthropic: hasAnthropic,
+          google: hasGemini
         }
       });
     }
-  } catch {
+  } catch (err) {
+    console.error("[Bridge AI IDE] Extension check failed:", err);
     ghostOverlay?.classList.add("visible");
   }
 }
