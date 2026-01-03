@@ -4,7 +4,7 @@
 import { renderJson } from './json-tree.js';
 
 const container = document.getElementById('telemetry');
-let lastResponseRef = null;
+let lastResponseId = null;
 
 function el(tag, className, text) {
   const e = document.createElement(tag);
@@ -135,31 +135,27 @@ function renderResponse(response) {
 
 function render() {
   const state = window.BridgeState?.getState();
-  const responseRef = state?.response || null;
+  const response = state?.response || null;
 
-  // Skip re-render if response hasn't changed (same object reference)
-  if (responseRef && responseRef === lastResponseRef) {
+  // Create a unique ID for the response based on key properties
+  const responseId = response
+    ? `${response.status}-${response.duration}-${JSON.stringify(response.body).slice(0, 100)}`
+    : null;
+
+  // Skip re-render if response hasn't changed
+  if (responseId && responseId === lastResponseId) {
     return;
   }
 
-  const prevScrollTop = container.scrollTop;
-  const hadResponse = lastResponseRef !== null;
-  const hasResponse = responseRef !== null;
-
   container.textContent = '';
 
-  if (state?.response) {
-    container.appendChild(renderResponse(state.response));
+  if (response) {
+    container.appendChild(renderResponse(response));
   } else {
     container.appendChild(renderEmpty());
   }
 
-  // Preserve scroll if we had a response before and still have one
-  if (hadResponse && hasResponse) {
-    container.scrollTop = prevScrollTop;
-  }
-
-  lastResponseRef = responseRef;
+  lastResponseId = responseId;
 }
 
 // Subscribe to state changes

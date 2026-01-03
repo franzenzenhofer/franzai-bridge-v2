@@ -1,5 +1,6 @@
 // Bridge Workbench - JSON Tree Viewer
-// Collapsible JSON display with syntax highlighting
+// Fully expanded JSON display with syntax highlighting
+// v2 - Always expanded, no auto-collapse
 
 function el(tag, className, text) {
   const e = document.createElement(tag);
