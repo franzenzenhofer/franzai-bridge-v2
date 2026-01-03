@@ -12,7 +12,7 @@ import {
   setDomainPreference,
   removeDomainPreference
 } from "../shared/storage";
-import { getConfiguredKeyNames } from "../shared/keys";
+import { getConfiguredKeyNames, resolveKeyValue } from "../shared/keys";
 import { BRIDGE_VERSION } from "../shared/constants";
 
 export async function handleGetSettings(): Promise<{ ok: boolean; settings: BridgeSettings }> {
@@ -42,7 +42,7 @@ export async function handleClearLogs(broadcast: (evt: BgEvent) => void): Promis
 
 export async function handleIsKeySet(keyName: string): Promise<{ ok: boolean; isSet: boolean }> {
   const settings = await getSettings();
-  const isSet = !!(keyName && settings.env[keyName]?.trim());
+  const isSet = !!(keyName && resolveKeyValue(settings.env, keyName));
   return { ok: true, isSet };
 }
 

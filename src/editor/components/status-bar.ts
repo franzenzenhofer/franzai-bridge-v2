@@ -85,16 +85,16 @@ export async function checkExtension(): Promise<void> {
       console.log("[Bridge AI IDE] Available keys array:", win.franzai.keys);
 
       // Use hasApiKey for more reliable detection
-      const [hasOpenAI, hasAnthropic, hasGemini] = await Promise.all([
+      const [hasOpenAI, hasAnthropic, hasGoogle] = await Promise.all([
         win.franzai.hasApiKey("OPENAI_API_KEY"),
         win.franzai.hasApiKey("ANTHROPIC_API_KEY"),
-        win.franzai.hasApiKey("GEMINI_API_KEY")
+        win.franzai.hasApiKey("GOOGLE_API_KEY")
       ]);
 
       console.log("[Bridge AI IDE] Key detection via hasApiKey:", {
         openai: hasOpenAI,
         anthropic: hasAnthropic,
-        gemini: hasGemini
+        gemini: hasGoogle
       });
 
       setState({
@@ -102,7 +102,7 @@ export async function checkExtension(): Promise<void> {
         keys: {
           openai: hasOpenAI,
           anthropic: hasAnthropic,
-          google: hasGemini
+          google: hasGoogle
         }
       });
     }

@@ -5,7 +5,7 @@ import type { BridgeSettings } from "./types";
  * When stored settings have older version, they auto-reset to new defaults.
  * User's ENV vars (API keys) are preserved during migration.
  */
-export const SETTINGS_VERSION = 3;
+export const SETTINGS_VERSION = 4;
 
 export const DEFAULT_SETTINGS: BridgeSettings = {
   settingsVersion: SETTINGS_VERSION,
@@ -18,7 +18,7 @@ export const DEFAULT_SETTINGS: BridgeSettings = {
   env: {
     OPENAI_API_KEY: "",
     ANTHROPIC_API_KEY: "",
-    GEMINI_API_KEY: "",
+    GOOGLE_API_KEY: "",
     MISTRAL_API_KEY: ""
   },
   injectionRules: [],

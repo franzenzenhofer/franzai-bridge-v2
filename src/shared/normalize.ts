@@ -47,6 +47,14 @@ export function normalizeSettings(input?: Partial<BridgeSettings> | null): Bridg
     ...DEFAULT_SETTINGS.env,
     ...toStringDict(input?.env)
   };
+  const geminiValue = env.GEMINI_API_KEY?.trim();
+  const googleValue = env.GOOGLE_API_KEY?.trim();
+  if (!googleValue && geminiValue) {
+    env.GOOGLE_API_KEY = geminiValue;
+  }
+  if (env.GOOGLE_API_KEY?.trim() && env.GEMINI_API_KEY) {
+    delete env.GEMINI_API_KEY;
+  }
   const injectionRules = toRules(input?.injectionRules);
   const maxLogs = clampNumber(
     input?.maxLogs,

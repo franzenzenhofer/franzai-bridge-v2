@@ -1,4 +1,5 @@
 import type { Dict, InjectionRule } from "./types";
+import { resolveKeyValue } from "./keys";
 
 export function builtinProviderRules(): InjectionRule[] {
   return [
@@ -18,7 +19,7 @@ export function builtinProviderRules(): InjectionRule[] {
     {
       hostPattern: "generativelanguage.googleapis.com",
       injectHeaders: {
-        "x-goog-api-key": "${GEMINI_API_KEY}"
+        "x-goog-api-key": "${GOOGLE_API_KEY}"
       }
     },
     {
@@ -31,7 +32,7 @@ export function builtinProviderRules(): InjectionRule[] {
 }
 
 export function expandTemplate(input: string, env: Dict<string>): string {
-  return input.replace(/\$\{([A-Z0-9_]+)\}/g, (_, name: string) => env[name] ?? "");
+  return input.replace(/\$\{([A-Z0-9_]+)\}/g, (_, name: string) => resolveKeyValue(env, name));
 }
 
 export function headersToObject(

@@ -67,11 +67,16 @@ export async function checkExtension() {
 
 export async function refreshKeys() {
   if (!window.franzai) return;
-  const keyNames = ['openai', 'anthropic', 'gemini', 'mistral'];
+  const keyMap = {
+    openai: 'OPENAI_API_KEY',
+    anthropic: 'ANTHROPIC_API_KEY',
+    google: 'GOOGLE_API_KEY',
+    mistral: 'MISTRAL_API_KEY'
+  };
   const keys = {};
-  for (const name of keyNames) {
+  for (const [name, keyName] of Object.entries(keyMap)) {
     try {
-      keys[name] = await window.franzai.hasApiKey(name);
+      keys[name] = await window.franzai.hasApiKey(keyName);
     } catch { keys[name] = false; }
   }
   setState({ keys });

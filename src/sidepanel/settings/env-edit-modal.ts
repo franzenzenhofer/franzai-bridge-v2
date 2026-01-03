@@ -2,13 +2,15 @@ import { state } from "../state";
 import { showToast } from "../ui/toast";
 import { updateSettings } from "./store";
 import { BUILTIN_KEY_TARGETS, getTargetDomain } from "./env-targets";
+import { getAliasKeys, normalizeKeyName } from "../../shared/keys";
 
 export function showEnvEditModal(key: string, currentValue: string): void {
   const settings = state.settings;
   if (!settings) return;
 
-  const isBuiltin = key in BUILTIN_KEY_TARGETS;
-  const targetDomain = getTargetDomain(key, settings);
+  const canonicalKey = normalizeKeyName(key);
+  const isBuiltin = canonicalKey in BUILTIN_KEY_TARGETS;
+  const targetDomain = getTargetDomain(canonicalKey, settings);
 
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
@@ -18,7 +20,7 @@ export function showEnvEditModal(key: string, currentValue: string): void {
 
   const title = document.createElement("div");
   title.className = "modal-title";
-  title.textContent = `Edit ${key}`;
+  title.textContent = `Edit ${canonicalKey}`;
 
   const targetRow = document.createElement("div");
   targetRow.className = "modal-field";
@@ -63,7 +65,11 @@ export function showEnvEditModal(key: string, currentValue: string): void {
   saveBtn.textContent = "Save";
   saveBtn.onclick = async () => {
     const next = structuredClone(settings);
-    next.env[key] = input.value;
+    const aliasKeys = getAliasKeys(canonicalKey);
+    for (const alias of aliasKeys) {
+      delete next.env[alias];
+    }
+    next.env[canonicalKey] = input.value;
     const resp = await updateSettings(next);
     overlay.remove();
     if (resp.ok) showToast(`Updated ${key}`);

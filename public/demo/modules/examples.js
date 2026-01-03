@@ -36,13 +36,13 @@ export const EXAMPLES = {
     {
       id: 'gemini',
       name: 'Gemini',
-      keyName: 'gemini',
+      keyName: 'google',
       method: 'POST',
       url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
       headers: { 'Content-Type': 'application/json' },
       body: { contents: [{ parts: [{ text: 'Say hello in one sentence.' }] }] },
       injectedHeader: 'x-goog-api-key',
-      injectedTemplate: '[GEMINI_API_KEY]'
+      injectedTemplate: '[GOOGLE_API_KEY]'
     },
     {
       id: 'mistral',

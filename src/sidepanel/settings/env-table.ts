@@ -1,4 +1,5 @@
 import type { BridgeSettings } from "../../shared/types";
+import { getAliasKeys, normalizeKeyName, resolveKeyValue } from "../../shared/keys";
 import { state } from "../state";
 import { ICON_EDIT, ICON_TRASH } from "../ui/icons";
 import { showToast } from "../ui/toast";
@@ -6,9 +7,7 @@ import { updateSettings } from "./store";
 import { BUILTIN_KEY_TARGETS, getTargetDomain } from "./env-targets";
 import { showEnvEditModal } from "./env-edit-modal";
 
-function renderCard(key: string, settings: BridgeSettings): HTMLElement {
-  const env = settings.env ?? {};
-  const value = env[key];
+function renderCard(key: string, value: string, settings: BridgeSettings): HTMLElement {
   const hasValue = value && value.trim() !== "";
 
   const targetDomain = getTargetDomain(key, settings);
@@ -30,7 +29,7 @@ function renderCard(key: string, settings: BridgeSettings): HTMLElement {
   editBtn.className = "icon-btn";
   editBtn.innerHTML = ICON_EDIT;
   editBtn.title = hasValue ? "Edit" : "Set value";
-  editBtn.onclick = () => showEnvEditModal(key, env[key] || "");
+  editBtn.onclick = () => showEnvEditModal(key, value || "");
   actions.appendChild(editBtn);
 
   const delBtn = document.createElement("button");
@@ -39,7 +38,10 @@ function renderCard(key: string, settings: BridgeSettings): HTMLElement {
   delBtn.title = "Delete";
   delBtn.onclick = async () => {
     const next = structuredClone(settings);
-    delete next.env[key];
+    const aliasKeys = getAliasKeys(key);
+    for (const alias of aliasKeys) {
+      delete next.env[alias];
+    }
     const resp = await updateSettings(next);
     if (resp.ok) showToast(`Deleted ${key}`);
     else showToast(resp.error ?? "Failed to save settings", true);
@@ -80,7 +82,8 @@ export function renderEnvTable(): void {
   const settings = state.settings;
   if (!settings) return;
 
-  const keys = Object.keys(settings.env ?? {}).sort((a, b) => a.localeCompare(b));
+  const keys = Array.from(new Set(Object.keys(settings.env ?? {}).map((key) => normalizeKeyName(key))))
+    .sort((a, b) => a.localeCompare(b));
   if (!keys.length) {
     const hint = document.createElement("div");
     hint.className = "hint";
@@ -90,10 +93,7 @@ export function renderEnvTable(): void {
   }
 
   for (const key of keys) {
-    envTable.appendChild(renderCard(key, settings));
-  }
-
-  if (BUILTIN_KEY_TARGETS.GOOGLE_API_KEY && !settings.env.GOOGLE_API_KEY && settings.env.GEMINI_API_KEY) {
-    // legacy alias display handled elsewhere
+    const value = resolveKeyValue(settings.env, key);
+    envTable.appendChild(renderCard(key, value, settings));
   }
 }

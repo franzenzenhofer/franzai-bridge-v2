@@ -2,6 +2,7 @@ import type { InjectionRule } from "../../shared/types";
 import { state } from "../state";
 import { showToast } from "../ui/toast";
 import { updateSettings } from "./store";
+import { getAliasKeys, normalizeKeyName } from "../../shared/keys";
 
 export function showEnvAddModal(): void {
   const settings = state.settings;
@@ -65,7 +66,7 @@ export function showEnvAddModal(): void {
   saveBtn.className = "primary";
   saveBtn.textContent = "Add";
   saveBtn.onclick = async () => {
-    const name = nameInput.value.trim().toUpperCase();
+    const name = normalizeKeyName(nameInput.value.trim());
     const target = targetInput.value.trim().toLowerCase();
     const value = valueInput.value;
 
@@ -86,6 +87,10 @@ export function showEnvAddModal(): void {
     }
 
     const next = structuredClone(settings);
+    const aliasKeys = getAliasKeys(name);
+    for (const alias of aliasKeys) {
+      delete next.env[alias];
+    }
     next.env[name] = value;
 
     const newRule: InjectionRule = {

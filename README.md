@@ -29,6 +29,7 @@ Open the side panel → Settings → Click **"+ Add ENV Variable"**:
 - `ANTHROPIC_API_KEY` → `api.anthropic.com`
 - `GOOGLE_API_KEY` → `generativelanguage.googleapis.com`
 - `MISTRAL_API_KEY` → `api.mistral.ai`
+Legacy alias: `GEMINI_API_KEY` still works but maps to `GOOGLE_API_KEY`.
 
 ### 3. Enable Bridge for Your Page
 Add this meta tag to your HTML `<head>`:

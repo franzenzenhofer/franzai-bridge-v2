@@ -5,7 +5,7 @@
 const PROVIDER_RULES = [
   { host: 'api.openai.com', type: 'injector', name: 'OPENAI_API_KEY' },
   { host: 'api.anthropic.com', type: 'injector', name: 'ANTHROPIC_API_KEY' },
-  { host: 'generativelanguage.googleapis.com', type: 'injector', name: 'GEMINI_API_KEY' },
+  { host: 'generativelanguage.googleapis.com', type: 'injector', name: 'GOOGLE_API_KEY' },
   { host: 'api.mistral.ai', type: 'injector', name: 'MISTRAL_API_KEY' },
   { host: 'googleapis.com', type: 'session', name: 'Google OAuth' }
 ];
@@ -94,7 +94,7 @@ export function getGhostHeaders(url) {
     const headerMap = {
       'OPENAI_API_KEY': { name: 'Authorization', value: 'Bearer [OPENAI_API_KEY]' },
       'ANTHROPIC_API_KEY': { name: 'x-api-key', value: '[ANTHROPIC_API_KEY]' },
-      'GEMINI_API_KEY': { name: 'x-goog-api-key', value: '[GEMINI_API_KEY]' },
+      'GOOGLE_API_KEY': { name: 'x-goog-api-key', value: '[GOOGLE_API_KEY]' },
       'MISTRAL_API_KEY': { name: 'Authorization', value: 'Bearer [MISTRAL_API_KEY]' }
     };
     const header = headerMap[flow.name];
