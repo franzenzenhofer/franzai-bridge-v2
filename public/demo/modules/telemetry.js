@@ -121,7 +121,7 @@ function renderResponse(response) {
   if (response.error) {
     bodyContent.textContent = response.error;
   } else if (typeof response.body === 'object') {
-    bodyContent.appendChild(renderJson(response.body, 3));
+    bodyContent.appendChild(renderJson(response.body));
   } else {
     bodyContent.textContent = String(response.body || '');
   }
@@ -135,9 +135,17 @@ function renderResponse(response) {
 
 function render() {
   const state = window.BridgeState?.getState();
-  const prevScrollTop = container.scrollTop;
   const responseRef = state?.response || null;
-  const preserveScroll = responseRef && responseRef === lastResponseRef;
+
+  // Skip re-render if response hasn't changed (same object reference)
+  if (responseRef && responseRef === lastResponseRef) {
+    return;
+  }
+
+  const prevScrollTop = container.scrollTop;
+  const hadResponse = lastResponseRef !== null;
+  const hasResponse = responseRef !== null;
+
   container.textContent = '';
 
   if (state?.response) {
@@ -146,7 +154,8 @@ function render() {
     container.appendChild(renderEmpty());
   }
 
-  if (preserveScroll) {
+  // Preserve scroll if we had a response before and still have one
+  if (hadResponse && hasResponse) {
     container.scrollTop = prevScrollTop;
   }
 

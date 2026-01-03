@@ -8,7 +8,7 @@ function el(tag, className, text) {
   return e;
 }
 
-export function renderJson(data, maxDepth = 2) {
+export function renderJson(data, maxDepth = Infinity) {
   const container = el('div', 'json-tree');
   renderValue(data, container, 0, maxDepth);
   return container;
