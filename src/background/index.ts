@@ -1,4 +1,4 @@
 // Background module exports
-export * from "./fetchHandler";
+export * from "./fetch";
 export * from "./googleHandlers";
 export * from "./settingsHandlers";

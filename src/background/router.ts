@@ -1,7 +1,7 @@
 import type { BridgeSettings, FetchRequestFromPage, GoogleFetchRequest } from "../shared/types";
 import { BG_MSG, type BgEvent, type BgMessage } from "../shared/messages";
 import { createLogger } from "../shared/logger";
-import { handleFetch, abortFetch } from "./fetchHandler";
+import { handleFetch, abortFetch } from "./fetch";
 import {
   handleGoogleAuth,
   handleGoogleLogout,

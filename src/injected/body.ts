@@ -1,4 +1,5 @@
 import { MAX_BODY_BYTES } from "../shared/constants";
+import { uint8ArrayToBase64 } from "../shared/base64";
 
 const textEncoder = new TextEncoder();
 
@@ -32,14 +33,6 @@ function toUint8Array(buffer: ArrayBuffer): Uint8Array {
   const bytes = new Uint8Array(buffer);
   enforceMaxBytes(bytes.byteLength);
   return bytes;
-}
-
-function uint8ArrayToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
 }
 
 function toBinaryBody(bytes: Uint8Array): { __binary: true; base64: string; byteLength: number } {
