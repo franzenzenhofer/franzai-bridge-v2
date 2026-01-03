@@ -31,6 +31,7 @@ export async function requestToLite(input: RequestInfo | URL, init?: BridgeInit)
         method: init?.method,
         headers: headersToLite(headers),
         body: bodyPayload,
+        franzai: init?.franzai,
         redirect: init?.redirect,
         credentials: init?.credentials,
         cache: init?.cache,
@@ -51,16 +52,17 @@ export async function requestToLite(input: RequestInfo | URL, init?: BridgeInit)
       ? await bodyToPayload(init.body, headers)
       : await readRequestBody(req, headers);
 
-  return {
-    url: resolveUrl(req.url),
-    init: {
-      method: init?.method ?? req.method,
-      headers: headersToLite(headers),
-      body: bodyPayload,
-      redirect: init?.redirect ?? req.redirect,
-      credentials: init?.credentials ?? req.credentials,
-      cache: init?.cache ?? req.cache,
-      referrer: init?.referrer ?? req.referrer,
+    return {
+      url: resolveUrl(req.url),
+      init: {
+        method: init?.method ?? req.method,
+        headers: headersToLite(headers),
+        body: bodyPayload,
+        franzai: init?.franzai,
+        redirect: init?.redirect ?? req.redirect,
+        credentials: init?.credentials ?? req.credentials,
+        cache: init?.cache ?? req.cache,
+        referrer: init?.referrer ?? req.referrer,
       referrerPolicy: init?.referrerPolicy ?? req.referrerPolicy,
       integrity: init?.integrity ?? req.integrity,
       keepalive: init?.keepalive ?? req.keepalive

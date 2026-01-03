@@ -192,7 +192,10 @@ export async function handleFetch(
 
   const controller = new AbortController();
   let timedOut = false;
-  const timeoutId = setTimeout(() => { timedOut = true; controller.abort(); }, FETCH_TIMEOUT_MS);
+  const timeoutMs = typeof init.franzai?.timeout === "number" && init.franzai.timeout > 0
+    ? init.franzai.timeout
+    : FETCH_TIMEOUT_MS;
+  const timeoutId = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
 
   inFlight.set(payload.requestId, controller);
 
@@ -247,7 +250,7 @@ export async function handleFetch(
     let statusText = "Network Error";
     if (isAbort && timedOut) {
       statusText = "Timeout";
-      message = `Timed out after ${FETCH_TIMEOUT_MS}ms`;
+      message = `Timed out after ${timeoutMs}ms`;
     } else if (isAbort && abortedByPage.has(payload.requestId)) {
       statusText = "Aborted";
       message = "Aborted by caller";

@@ -34,6 +34,27 @@ export type BridgeSettings = {
   maxLogs: number;
 };
 
+export type BridgeMode = "auto" | "always" | "off";
+
+export type BridgeRetryOptions = {
+  maxAttempts?: number;
+  backoffMs?: number;
+  retryOn?: number[];
+};
+
+export type BridgeCacheOptions = {
+  ttlMs?: number;
+  key?: string;
+};
+
+export type BridgeRequestOptions = {
+  mode?: BridgeMode;
+  timeout?: number;
+  retry?: BridgeRetryOptions;
+  cache?: BridgeCacheOptions;
+  stream?: boolean;
+};
+
 // Binary body representation that survives message passing
 export type BinaryBody = {
   __binary: true;
@@ -52,6 +73,7 @@ export type FetchInitLite = {
   referrerPolicy?: ReferrerPolicy;
   integrity?: string;
   keepalive?: boolean;
+  franzai?: BridgeRequestOptions;
 };
 
 export type PageFetchRequest = {

@@ -292,20 +292,6 @@ Cache GET responses in extension storage with configurable TTL.
 
 ---
 
-### [FEAT] Per-Request Timeout Override
-
-**Status:** Not implemented
-**Files:** `src/injected.ts`, `src/background.ts`
-
-Currently uses global `FETCH_TIMEOUT_MS` (25s). Should allow:
-```javascript
-fetch(url, {
-  franzai: { timeout: 60000 }
-});
-```
-
----
-
 ### [IMPROVEMENT] Side Panel UX
 
 **Status:** Basic implementation
@@ -460,6 +446,15 @@ Added support for Blob, ArrayBuffer, TypedArray, FormData, ReadableStream bodies
 **Files:** `src/background/fetchHandler.ts`, `src/injected/bridge-fetch.ts`, `src/injected/google/fetch.ts`, `src/shared/types.ts`, `src/shared/content-type.ts`, `src/shared/googleAuth.ts`
 
 Added binary-safe response handling with Content-Type detection and byte forwarding. Logs now preview binary sizes without corruption.
+
+---
+
+### [FEAT] Per-Request Timeout Override ✓
+
+**Completed:** 2026-01-03
+**Files:** `src/shared/types.ts`, `src/injected/request.ts`, `src/injected/bridge-fetch.ts`, `src/content/handlers/fetch.ts`, `src/background/fetchHandler.ts`
+
+Allows `franzai.timeout` to override the global fetch timeout end-to-end.
 
 ---
 

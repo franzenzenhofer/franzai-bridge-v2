@@ -1,25 +1,5 @@
-import type { BridgeStatus, FetchInitLite, GooglePublicAuthState } from "../shared/types";
-
-export type BridgeMode = "auto" | "always" | "off";
-
-export type BridgeRetryOptions = {
-  maxAttempts?: number;
-  backoffMs?: number;
-  retryOn?: number[];
-};
-
-export type BridgeCacheOptions = {
-  ttlMs?: number;
-  key?: string;
-};
-
-export type BridgeRequestOptions = {
-  mode?: BridgeMode;
-  timeout?: number;
-  retry?: BridgeRetryOptions;
-  cache?: BridgeCacheOptions;
-  stream?: boolean;
-};
+import type { BridgeMode, BridgeRequestOptions, BridgeStatus, FetchInitLite, GooglePublicAuthState } from "../shared/types";
+export type { BridgeMode, BridgeRequestOptions } from "../shared/types";
 
 export type BridgeConfig = {
   mode: BridgeMode;

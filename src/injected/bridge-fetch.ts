@@ -38,6 +38,10 @@ export function createBridgeFetch(deps: BridgeFetchDeps) {
     const requestId = makeId("req");
     const req: PageFetchRequest = { requestId, url: lite.url, init: lite.init };
 
+    const timeoutMs = typeof init?.franzai?.timeout === "number" && init.franzai.timeout > 0
+      ? init.franzai.timeout
+      : BRIDGE_TIMEOUT_MS;
+
     const resp = await new Promise<FetchEnvelope>((resolve, reject) => {
       let done = false;
 
@@ -86,10 +90,10 @@ export function createBridgeFetch(deps: BridgeFetchDeps) {
       const timeoutId = window.setTimeout(() => {
         finishResolve({
           ok: false,
-          error: `Timed out waiting for FranzAI Bridge response after ${BRIDGE_TIMEOUT_MS}ms. ` +
+          error: `Timed out waiting for FranzAI Bridge response after ${timeoutMs}ms. ` +
             "Check that the extension is installed, enabled, and that this origin is allowed."
         });
-      }, BRIDGE_TIMEOUT_MS);
+      }, timeoutMs);
 
       window.addEventListener("message", onMessage);
       if (lite.signal) lite.signal.addEventListener("abort", onAbort, { once: true });

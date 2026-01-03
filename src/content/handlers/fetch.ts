@@ -63,6 +63,10 @@ export async function handleFetchRequest(req: PageFetchRequest): Promise<void> {
   };
 
   try {
+    const timeoutMs = typeof req.init?.franzai?.timeout === "number" && req.init.franzai.timeout > 0
+      ? req.init.franzai.timeout
+      : BRIDGE_TIMEOUT_MS;
+
     const resp = await sendRuntimeMessage<
       { type: typeof BG_MSG.FETCH; payload: FetchRequestFromPage },
       FetchEnvelope
@@ -70,7 +74,7 @@ export async function handleFetchRequest(req: PageFetchRequest): Promise<void> {
       type: BG_MSG.FETCH,
       payload
     }, {
-      timeoutMs: BRIDGE_TIMEOUT_MS + 5000
+      timeoutMs: timeoutMs + 5000
     });
 
     postFetchResponse(resp);
