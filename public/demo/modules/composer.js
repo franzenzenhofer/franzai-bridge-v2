@@ -163,8 +163,10 @@ async function executeRequest() {
     let response;
     if (flow.type === 'session') {
       response = await window.franzai.google.fetch(currentUrl, init);
+    } else if (window.franzai?.fetch) {
+      response = await window.franzai.fetch(currentUrl, init);
     } else {
-      response = await fetch(currentUrl, init);
+      throw new Error('FranzAI Bridge extension not available');
     }
 
     const duration = Date.now() - startTime;

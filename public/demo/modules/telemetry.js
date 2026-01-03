@@ -4,6 +4,7 @@
 import { renderJson } from './json-tree.js';
 
 const container = document.getElementById('telemetry');
+let lastResponseRef = null;
 
 function el(tag, className, text) {
   const e = document.createElement(tag);
@@ -134,6 +135,9 @@ function renderResponse(response) {
 
 function render() {
   const state = window.BridgeState?.getState();
+  const prevScrollTop = container.scrollTop;
+  const responseRef = state?.response || null;
+  const preserveScroll = responseRef && responseRef === lastResponseRef;
   container.textContent = '';
 
   if (state?.response) {
@@ -141,6 +145,12 @@ function render() {
   } else {
     container.appendChild(renderEmpty());
   }
+
+  if (preserveScroll) {
+    container.scrollTop = prevScrollTop;
+  }
+
+  lastResponseRef = responseRef;
 }
 
 // Subscribe to state changes
