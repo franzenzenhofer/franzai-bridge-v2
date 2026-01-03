@@ -1,6 +1,6 @@
 // Google OAuth handlers for background script
 
-import type { GoogleFetchRequest, GooglePublicAuthState } from "../shared/types";
+import type { GoogleFetchRequest, GoogleFetchResponse, GooglePublicAuthState } from "../shared/types";
 import { BG_EVT, type BgEvent } from "../shared/messages";
 import {
   authenticateGoogle,
@@ -42,7 +42,7 @@ export async function handleGoogleHasScopes(scopes: string[]): Promise<{ ok: boo
 
 export async function handleGoogleFetch(
   payload: GoogleFetchRequest
-): Promise<{ ok: boolean; requestId: string; status: number; statusText: string; headers: Record<string, string>; bodyText: string; error?: string }> {
+): Promise<GoogleFetchResponse> {
   const result = await googleFetch(payload.url, payload.init);
   return { ...result, requestId: payload.requestId };
 }

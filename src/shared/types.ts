@@ -71,6 +71,7 @@ export type FetchResponseToPage = {
   statusText: string;
   headers: Dict<string>;
   bodyText: string;
+  bodyBytes?: Uint8Array;
   elapsedMs: number;
   error?: string;
 };
@@ -128,5 +129,6 @@ export type GoogleFetchResponse = {
   statusText: string;
   headers: Dict<string>;
   bodyText: string;
+  bodyBytes?: Uint8Array;
   error?: string;
 };

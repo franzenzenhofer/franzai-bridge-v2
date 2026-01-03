@@ -5,6 +5,7 @@ import { BG_EVT, type BgEvent } from "../shared/messages";
 import { appendLog, getSettings } from "../shared/storage";
 import { matchesAnyPattern, wildcardToRegExp } from "../shared/wildcard";
 import { builtinProviderRules, expandTemplate, headersToObject, hasHeader } from "../shared/providers";
+import { isEventStream, isTextualResponse } from "../shared/content-type";
 import { FETCH_TIMEOUT_MS, REQUEST_BODY_PREVIEW_LIMIT, RESPONSE_BODY_PREVIEW_LIMIT } from "../shared/constants";
 import { createLogger } from "../shared/logger";
 import { makeId } from "../shared/ids";
@@ -200,13 +201,25 @@ export async function handleFetch(
     const headersObj: Dict<string> = {};
     res.headers.forEach((value, key) => { headersObj[key] = value; });
 
-    const bodyText = await res.text();
+    const contentType = res.headers.get("content-type");
+    if (isEventStream(contentType)) {
+      log.warn("SSE stream detected; buffering full response (no progressive streaming yet).");
+    }
+
+    let bodyText = "";
+    let bodyBytes: Uint8Array | undefined;
+    if (isTextualResponse(contentType)) {
+      bodyText = await res.text();
+    } else {
+      const buffer = await res.arrayBuffer();
+      bodyBytes = new Uint8Array(buffer);
+    }
     const elapsedMs = Date.now() - started;
 
     logEntry.status = res.status;
     logEntry.statusText = res.statusText;
     logEntry.responseHeaders = headersObj;
-    logEntry.responseBodyPreview = previewBody(bodyText, RESPONSE_BODY_PREVIEW_LIMIT);
+    logEntry.responseBodyPreview = previewBody(bodyBytes ?? bodyText, RESPONSE_BODY_PREVIEW_LIMIT);
     logEntry.elapsedMs = elapsedMs;
 
     await appendLog(logEntry, settings.maxLogs);
@@ -219,6 +232,7 @@ export async function handleFetch(
       statusText: res.statusText,
       headers: headersObj,
       bodyText,
+      bodyBytes,
       elapsedMs
     };
 

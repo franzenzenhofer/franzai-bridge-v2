@@ -2,6 +2,7 @@
 // Uses chrome.identity for secure OAuth flow
 
 import type { BinaryBody, GoogleAuthState, GooglePublicAuthState, Dict, FetchInitLite } from "./types";
+import { isTextualResponse } from "./content-type";
 import { normalizeScopeInput, scopesInclude } from "./googleScopes";
 
 const STORAGE_KEY = "google_auth";
@@ -137,7 +138,7 @@ export async function hasGoogleScopes(requiredScopes: string[]): Promise<boolean
 export async function googleFetch(
   url: string,
   init?: FetchInitLite
-): Promise<{ ok: boolean; status: number; statusText: string; headers: Dict<string>; bodyText: string; error?: string }> {
+): Promise<{ ok: boolean; status: number; statusText: string; headers: Dict<string>; bodyText: string; bodyBytes?: Uint8Array; error?: string }> {
   const token = await getValidAccessToken();
   if (!token) {
     return { ok: false, status: 401, statusText: "Unauthorized", headers: {}, bodyText: "", error: "Not authenticated" };
@@ -186,10 +187,17 @@ export async function googleFetch(
       integrity: init?.integrity,
       keepalive: init?.keepalive
     });
-    const bodyText = await response.text();
+    const contentType = response.headers.get("content-type");
+    let bodyText = "";
+    let bodyBytes: Uint8Array | undefined;
+    if (isTextualResponse(contentType)) {
+      bodyText = await response.text();
+    } else {
+      bodyBytes = new Uint8Array(await response.arrayBuffer());
+    }
     const responseHeaders: Dict<string> = {};
     response.headers.forEach((v, k) => { responseHeaders[k] = v; });
-    return { ok: response.ok, status: response.status, statusText: response.statusText, headers: responseHeaders, bodyText };
+    return { ok: response.ok, status: response.status, statusText: response.statusText, headers: responseHeaders, bodyText, bodyBytes };
   } catch (err) {
     return { ok: false, status: 0, statusText: "Network Error", headers: {}, bodyText: "", error: String(err) };
   }

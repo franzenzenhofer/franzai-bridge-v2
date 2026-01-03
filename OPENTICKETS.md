@@ -40,54 +40,9 @@ Every change must preserve existing functionality. This is non-negotiable.
 
 ## High Priority
 
-### [FEAT] Binary Response Bodies
-
-**Status:** Not implemented - BUT SOLVABLE WITH CURRENT ARCHITECTURE
-**Files:** `src/background.ts`, `src/injected.ts`, `src/shared/types.ts`
-
-Currently responses are returned as `bodyText` (string). Binary responses (images, audio, PDFs) get corrupted.
-
-**Key insight:** We already use `Uint8Array` for request bodies via structured cloning. The same works for responses!
-
-**Solution:**
-```
-background.ts:
-  const buffer = await response.arrayBuffer();
-  const bodyBytes = new Uint8Array(buffer);
-  // Send bodyBytes alongside bodyText
-
-injected.ts:
-  // Detect binary Content-Type, use bodyBytes to construct Response
-  new Response(bodyBytes, { status, statusText, headers })
-```
-
-**Content-Type detection (text vs binary):**
-```javascript
-function isTextualResponse(contentType) {
-  if (!contentType) return true; // assume text if unknown
-  const ct = contentType.toLowerCase();
-  return ct.startsWith('text/') ||
-         ct.includes('json') ||
-         ct.includes('xml') ||
-         ct.includes('javascript') ||
-         ct.includes('x-www-form-urlencoded');
-}
-```
-
-**Graceful degradation:**
-- If Content-Type missing: assume text (current behavior, no regression)
-- If detection wrong: worst case binary as text (same as current, no regression)
-- Add console warning when binary detected so devs know it's handled
-
-**Why this works:** `chrome.runtime.sendMessage` uses structured cloning algorithm which natively supports `Uint8Array`. We're already doing this for request bodies!
-
-**Affected APIs:** DALL-E image generation, audio synthesis, file downloads, any non-JSON API
-
----
-
 ### [FEAT] Streaming Response Support
 
-**Status:** Not implemented - REQUIRES ARCHITECTURAL THINKING
+**Status:** Phase 1 buffering w/ SSE warning implemented; progressive streaming not implemented
 **Files:** `src/background.ts`, `src/contentScript.ts`, `src/injected.ts`
 
 All responses are fully buffered before returning. This affects:
@@ -496,6 +451,15 @@ For large bodies, consider:
 **Files:** `src/injected.ts`
 
 Added support for Blob, ArrayBuffer, TypedArray, FormData, ReadableStream bodies. Buffered to Uint8Array with 5MB limit.
+
+---
+
+### [FEAT] Binary Response Bodies ✓
+
+**Completed:** 2026-01-03
+**Files:** `src/background/fetchHandler.ts`, `src/injected/bridge-fetch.ts`, `src/injected/google/fetch.ts`, `src/shared/types.ts`, `src/shared/content-type.ts`, `src/shared/googleAuth.ts`
+
+Added binary-safe response handling with Content-Type detection and byte forwarding. Logs now preview binary sizes without corruption.
 
 ---
 

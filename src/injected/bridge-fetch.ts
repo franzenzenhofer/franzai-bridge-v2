@@ -1,5 +1,6 @@
 import type { FetchEnvelope, PageFetchRequest } from "../shared/types";
 import { BRIDGE_SOURCE, BRIDGE_TIMEOUT_MS } from "../shared/constants";
+import { isTextualResponse } from "../shared/content-type";
 import { PAGE_MSG } from "../shared/messages";
 import { makeId } from "../shared/ids";
 import { createAbortError } from "./errors";
@@ -8,6 +9,14 @@ import type { LiteRequest } from "./types";
 
 const BRIDGE_DISABLED_MESSAGE =
   "Bridge is disabled for this domain. Enable it in the extension or add <meta name=\"franzai-bridge\" content=\"enabled\"> to your page.";
+
+function getHeaderValue(headers: Record<string, string>, name: string): string | undefined {
+  const target = name.toLowerCase();
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() === target) return value;
+  }
+  return undefined;
+}
 
 type BridgeFetchDeps = {
   ensureDomainEnabled: () => Promise<boolean>;
@@ -98,6 +107,21 @@ export function createBridgeFetch(deps: BridgeFetchDeps) {
     }
 
     const r = resp.response;
+    const contentType = getHeaderValue(r.headers, "content-type");
+    const useText = isTextualResponse(contentType);
+
+    if (!useText && r.bodyBytes) {
+      return new Response(r.bodyBytes as BodyInit, {
+        status: r.status,
+        statusText: r.statusText,
+        headers: r.headers
+      });
+    }
+
+    if (!useText && !r.bodyBytes) {
+      console.warn("[FranzAI Bridge] Binary response missing body bytes; falling back to text.");
+    }
+
     return new Response(r.bodyText, {
       status: r.status,
       statusText: r.statusText,
