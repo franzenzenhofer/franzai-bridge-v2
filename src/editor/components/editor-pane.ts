@@ -121,6 +121,11 @@ function render(): void {
   previewToolbar.appendChild(deviceButtons.desktop ?? el("span"));
   previewToolbar.appendChild(deviceButtons.tablet ?? el("span"));
   previewToolbar.appendChild(deviceButtons.mobile ?? el("span"));
+
+  const reloadBtn = el("button", "device-btn", "↻ Reload");
+  reloadBtn.onclick = () => updatePreview();
+  previewToolbar.appendChild(reloadBtn);
+
   previewContainer.appendChild(previewToolbar);
 
   previewStage = el("div", "preview-stage") as HTMLDivElement;
