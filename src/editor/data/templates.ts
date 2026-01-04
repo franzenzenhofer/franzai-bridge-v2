@@ -111,9 +111,9 @@ export const TEMPLATES: Template[] = [
 ];
 
 export const SUGGESTIONS: string[] = [
+  "Test streaming: Build a simple click counter with a big colorful button.",
   "Build a sleek ToDo app with tags and filters.",
   "Create a weather dashboard with a 5-day forecast.",
   "Design a pricing page for a SaaS product.",
-  "Make a habit tracker with streaks and charts.",
-  "Build a minimal portfolio landing page."
+  "Make a habit tracker with streaks and charts."
 ];
