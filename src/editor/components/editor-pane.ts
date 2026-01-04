@@ -50,8 +50,9 @@ function render(): void {
 
   const tabs = el("div", "view-tabs");
 
-  // Reload button - same style as tabs, left of Preview
-  const reloadTab = el("button", "view-tab reload-tab", "↻ Reload");
+  // Reload button - icon only, left of Preview
+  const reloadTab = el("button", "view-tab reload-tab", "↻");
+  reloadTab.title = "Reload Preview";
   reloadTab.onclick = () => updatePreview();
 
   const previewTab = el("button", "view-tab", "Preview");
@@ -189,15 +190,16 @@ function updateViewVisibility(): void {
   requestContainer?.classList.remove("visible");
   tabs.forEach(t => t.classList.remove("active"));
 
+  // Tab indices: [0]=reload, [1]=preview, [2]=code, [3]=request
   if (state.view === "code") {
     codeContainer?.classList.add("visible");
-    tabs[1]?.classList.add("active");
+    tabs[2]?.classList.add("active");
   } else if (state.view === "request") {
     requestContainer?.classList.add("visible");
-    tabs[2]?.classList.add("active");
+    tabs[3]?.classList.add("active");
   } else {
     previewContainerEl?.classList.add("visible");
-    tabs[0]?.classList.add("active");
+    tabs[1]?.classList.add("active");
   }
 }
 

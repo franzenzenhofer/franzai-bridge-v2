@@ -32,7 +32,7 @@ function getFranzAI(): { fetch: FranzAIFetch } | null {
   return win.franzai ?? null;
 }
 
-/** Format request for Gemini with JSON mode */
+/** Format request for Gemini with JSON mode (non-streaming) */
 function formatGeminiRequest(messages: ChatMessage[], systemPrompt: string) {
   return {
     contents: [
@@ -46,6 +46,21 @@ function formatGeminiRequest(messages: ChatMessage[], systemPrompt: string) {
       responseMimeType: "application/json",
       responseSchema: RESPONSE_SCHEMA
     }
+  };
+}
+
+/** Format request for Gemini streaming (no JSON schema = token-by-token streaming) */
+function formatGeminiStreamRequest(messages: ChatMessage[], systemPrompt: string) {
+  // Without responseMimeType/responseSchema, Gemini streams token-by-token
+  // It will still follow the system prompt's JSON format instructions
+  return {
+    contents: [
+      { role: "user", parts: [{ text: systemPrompt }] },
+      ...messages.map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }]
+      }))
+    ]
   };
 }
 
@@ -108,26 +123,37 @@ function parseAnthropicResponse(data: unknown): AIResponse | null {
   return toolUse.input;
 }
 
-/** Fallback: extract code from markdown response */
+/** Fallback: extract code from markdown response (NOT for JSON) */
 function extractFromMarkdown(text: string): AIResponse | null {
-  const htmlMatch = text.match(/```html\s*([\s\S]*?)```/);
-  if (!htmlMatch) {
-    if (text.trim().startsWith("<!DOCTYPE") || text.trim().startsWith("<html")) {
-      return { explanation: "", code: text.trim() };
-    }
+  // Skip if this looks like JSON (starts with { or [)
+  const trimmed = text.trim();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
     return null;
   }
-  const code = htmlMatch[1];
-  if (!code) return null;
-  const trimmedCode = code.trim();
-  const explanation = text.replace(/```html[\s\S]*?```/, "").trim();
-  return { explanation, code: trimmedCode };
+
+  // Try code block patterns: ```html, ```HTML, or generic ```
+  const htmlMatch = text.match(/```(?:html|HTML)?\s*([\s\S]*?)```/);
+  if (htmlMatch?.[1]) {
+    const code = htmlMatch[1].trim();
+    if (code.startsWith("<!DOCTYPE") || code.startsWith("<html") || code.startsWith("<")) {
+      const explanation = text.replace(/```(?:html|HTML)?[\s\S]*?```/, "").trim();
+      return { explanation, code };
+    }
+  }
+
+  // Try raw HTML (entire response is HTML)
+  if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) {
+    return { explanation: "", code: trimmed };
+  }
+
+  return null;
 }
 
 type ModelConfig = {
   url: string;
   streamUrl?: string;
   format: (messages: ChatMessage[], system: string) => object;
+  formatStream?: (messages: ChatMessage[], system: string) => object;
   parse: (data: unknown) => AIResponse | null;
   parseSSE?: (line: string) => string | null;
 };
@@ -137,6 +163,7 @@ const MODEL_CONFIG: Record<ModelId, ModelConfig> = {
     url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
     streamUrl: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse",
     format: formatGeminiRequest,
+    formatStream: formatGeminiStreamRequest, // No JSON schema = true token streaming
     parse: parseGeminiResponse,
     parseSSE: (line: string) => {
       if (!line.startsWith("data: ")) return null;
@@ -179,9 +206,10 @@ export async function streamingChat(
   const franzai = getFranzAI();
   if (!franzai) throw new Error("Bridge extension not available");
 
-  // Use streaming URL if available
+  // Use streaming URL and format if available
   const url = config.streamUrl ?? config.url;
-  const requestBody = config.format(messages, systemPrompt);
+  const formatFn = config.streamUrl && config.formatStream ? config.formatStream : config.format;
+  const requestBody = formatFn(messages, systemPrompt);
   const startTime = Date.now();
 
   setState({
@@ -270,16 +298,28 @@ export async function streamingChat(
       }
     });
 
-    // Parse accumulated JSON
+    // Parse accumulated JSON (may be wrapped in ```json ... ``` code block)
+    let jsonText = accumulatedText.trim();
+
+    // Strip markdown code fences if present
+    const jsonFenceMatch = jsonText.match(/^```(?:json)?\s*([\s\S]*?)```$/);
+    if (jsonFenceMatch?.[1]) {
+      jsonText = jsonFenceMatch[1].trim();
+    }
+
     try {
-      const result = JSON.parse(accumulatedText) as AIResponse;
+      const result = JSON.parse(jsonText) as AIResponse;
       if (result.code) return result;
-    } catch { /* try fallback */ }
+      console.warn("[ai-client] JSON parsed but missing code field:", Object.keys(result));
+    } catch (e) {
+      console.warn("[ai-client] JSON parse failed:", e instanceof Error ? e.message : e);
+      console.warn("[ai-client] First 200 chars:", jsonText.slice(0, 200));
+    }
 
     const fromMarkdown = extractFromMarkdown(accumulatedText);
     if (fromMarkdown?.code) return fromMarkdown;
 
-    throw new Error("Failed to parse streaming response");
+    throw new Error(`Failed to parse streaming response (${accumulatedText.length} chars)`);
   }
 
   // Fallback to buffered response
