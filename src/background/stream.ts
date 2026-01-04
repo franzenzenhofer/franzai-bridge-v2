@@ -114,7 +114,8 @@ async function handleStreamStart(payload: StreamStartPayload, port: chrome.runti
     if (!res.body) {
       const fallbackText = await res.text();
       const encoder = new TextEncoder();
-      port.postMessage({ type: STREAM_MSG.CHUNK, payload: { requestId: payload.requestId, chunk: encoder.encode(fallbackText) } });
+      // Convert to Array for reliable serialization
+      port.postMessage({ type: STREAM_MSG.CHUNK, payload: { requestId: payload.requestId, chunk: Array.from(encoder.encode(fallbackText)) } });
     } else {
       const reader = res.body.getReader();
       const inactivityMs = typeof payload.init?.franzai?.timeout === "number" && payload.init.franzai.timeout > 0
@@ -127,7 +128,8 @@ async function handleStreamStart(payload: StreamStartPayload, port: chrome.runti
         if (done) break;
         if (!value) continue;
 
-        port.postMessage({ type: STREAM_MSG.CHUNK, payload: { requestId: payload.requestId, chunk: value } });
+        // Convert Uint8Array to regular Array for reliable serialization through postMessage
+        port.postMessage({ type: STREAM_MSG.CHUNK, payload: { requestId: payload.requestId, chunk: Array.from(value) } });
         resetInactivity(inactivityMs);
 
         if (isText) {

@@ -6,7 +6,7 @@
 import { el } from "../utils/dom";
 import { renderMarkdown } from "../utils/markdown-renderer";
 import { getState, subscribe, setState, addMessage, updateLastMessage, pushHistory } from "../state/store";
-import { chat } from "../services/ai-client";
+import { streamingChat } from "../services/ai-client";
 import { buildSystemPrompt } from "../services/ai-context";
 import type { ChatMessage, ModelId, ContextFile } from "../state/types";
 import { SUGGESTIONS } from "../data/templates";
@@ -489,8 +489,18 @@ async function sendMessage(text: string): Promise<void> {
 
   try {
     const systemPrompt = buildSystemPrompt();
-    const result = await chat(state.model, messagesForAI, systemPrompt, 0, {
-      signal: activeAbortController.signal
+
+    // Use streaming chat with progressive UI updates
+    const result = await streamingChat(state.model, messagesForAI, systemPrompt, {
+      signal: activeAbortController.signal,
+      onChunk: (accumulatedText) => {
+        // Show streaming progress - try to extract explanation preview
+        const preview = extractStreamingPreview(accumulatedText);
+        updateLastMessage(preview, { isStreaming: true });
+      },
+      onDone: () => {
+        // Streaming complete, final parse will happen below
+      }
     });
 
     const updateOptions: { code?: string; changes?: string[]; isStreaming?: boolean } = {
@@ -514,4 +524,21 @@ async function sendMessage(text: string): Promise<void> {
   } finally {
     activeAbortController = null;
   }
+}
+
+/** Extract preview text from streaming JSON - shows explanation as it builds */
+function extractStreamingPreview(text: string): string {
+  // Try to extract partial explanation from streaming JSON
+  // Format: {"explanation":"...","code":"..."}
+  const explanationMatch = text.match(/"explanation"\s*:\s*"((?:[^"\\]|\\.)*)(?:"|$)/);
+  if (explanationMatch?.[1]) {
+    // Unescape JSON string
+    try {
+      return JSON.parse(`"${explanationMatch[1]}"`);
+    } catch {
+      return explanationMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"');
+    }
+  }
+  // Fallback: show character count
+  return `Generating... (${text.length} chars)`;
 }

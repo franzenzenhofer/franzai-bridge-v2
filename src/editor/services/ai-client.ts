@@ -1,5 +1,5 @@
 /**
- * Bridge AI IDE - AI Client with Structured Output
+ * Bridge AI IDE - AI Client with Structured Output + Streaming
  * Returns { explanation, code, changes } from all providers
  */
 
@@ -19,7 +19,7 @@ const RESPONSE_SCHEMA = {
 
 /** Extended RequestInit with Bridge options */
 interface BridgeRequestInit extends RequestInit {
-  franzai?: { timeout?: number };
+  franzai?: { timeout?: number; stream?: boolean };
 }
 
 type FranzAIFetch = (url: string, init?: BridgeRequestInit) => Promise<Response>;
@@ -124,15 +124,29 @@ function extractFromMarkdown(text: string): AIResponse | null {
   return { explanation, code: trimmedCode };
 }
 
-const MODEL_CONFIG: Record<ModelId, {
+type ModelConfig = {
   url: string;
+  streamUrl?: string;
   format: (messages: ChatMessage[], system: string) => object;
   parse: (data: unknown) => AIResponse | null;
-}> = {
+  parseSSE?: (line: string) => string | null;
+};
+
+const MODEL_CONFIG: Record<ModelId, ModelConfig> = {
   "gemini-2.5-flash": {
     url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+    streamUrl: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse",
     format: formatGeminiRequest,
-    parse: parseGeminiResponse
+    parse: parseGeminiResponse,
+    parseSSE: (line: string) => {
+      if (!line.startsWith("data: ")) return null;
+      try {
+        const json = JSON.parse(line.slice(6));
+        return json.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
+      } catch {
+        return null;
+      }
+    }
   },
   "gpt-5-mini": {
     url: "https://api.openai.com/v1/chat/completions",
@@ -146,13 +160,18 @@ const MODEL_CONFIG: Record<ModelId, {
   }
 };
 
-/** Main chat function - returns structured AIResponse */
-export async function chat(
+export type StreamCallbacks = {
+  onChunk?: (text: string) => void;
+  onDone?: () => void;
+  signal?: AbortSignal | undefined;
+};
+
+/** Streaming chat - calls onChunk with accumulated text as response streams */
+export async function streamingChat(
   model: ModelId,
   messages: ChatMessage[],
   systemPrompt: string,
-  retryCount = 0,
-  options?: { signal?: AbortSignal }
+  callbacks: StreamCallbacks = {}
 ): Promise<AIResponse> {
   const config = MODEL_CONFIG[model];
   if (!config) throw new Error(`Unknown model: ${model}`);
@@ -160,12 +179,14 @@ export async function chat(
   const franzai = getFranzAI();
   if (!franzai) throw new Error("Bridge extension not available");
 
+  // Use streaming URL if available
+  const url = config.streamUrl ?? config.url;
   const requestBody = config.format(messages, systemPrompt);
   const startTime = Date.now();
 
   setState({
     lastRequest: {
-      url: config.url,
+      url,
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: requestBody,
@@ -178,11 +199,11 @@ export async function chat(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(requestBody),
-    franzai: { timeout: AI_TIMEOUT_MS }
+    franzai: { stream: Boolean(config.streamUrl), timeout: AI_TIMEOUT_MS }
   };
-  if (options?.signal) requestInit.signal = options.signal;
+  if (callbacks.signal) requestInit.signal = callbacks.signal;
 
-  const response = await franzai.fetch(config.url, requestInit);
+  const response = await franzai.fetch(url, requestInit);
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -199,7 +220,72 @@ export async function chat(
     throw new Error(`API error: ${response.status} - ${errorText}`);
   }
 
+  // If streaming with SSE parser
+  if (config.streamUrl && config.parseSSE && response.body) {
+    let accumulatedText = "";
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+
+          const chunk = config.parseSSE(trimmed);
+          if (chunk) {
+            accumulatedText += chunk;
+            callbacks.onChunk?.(accumulatedText);
+          }
+        }
+      }
+
+      // Process remaining buffer
+      if (buffer.trim()) {
+        const chunk = config.parseSSE(buffer.trim());
+        if (chunk) {
+          accumulatedText += chunk;
+          callbacks.onChunk?.(accumulatedText);
+        }
+      }
+    } finally {
+      callbacks.onDone?.();
+    }
+
+    setState({
+      lastResponse: {
+        status: response.status,
+        statusText: response.statusText,
+        headers: toHeadersRecord(response.headers),
+        body: { streaming: true, textLength: accumulatedText.length },
+        duration: Date.now() - startTime
+      }
+    });
+
+    // Parse accumulated JSON
+    try {
+      const result = JSON.parse(accumulatedText) as AIResponse;
+      if (result.code) return result;
+    } catch { /* try fallback */ }
+
+    const fromMarkdown = extractFromMarkdown(accumulatedText);
+    if (fromMarkdown?.code) return fromMarkdown;
+
+    throw new Error("Failed to parse streaming response");
+  }
+
+  // Fallback to buffered response
   const data = await response.json();
+  callbacks.onDone?.();
+
   setState({
     lastResponse: {
       status: response.status,
@@ -210,27 +296,37 @@ export async function chat(
     }
   });
 
-  // Step 1: Try structured JSON parsing
   try {
     const result = config.parse(data);
     if (result?.code) return result;
   } catch { /* continue to fallback */ }
 
-  // Step 2: Try markdown extraction fallback
   const rawText = extractRawText(data, model);
   if (rawText) {
     const fromMarkdown = extractFromMarkdown(rawText);
     if (fromMarkdown?.code) return fromMarkdown;
   }
 
-  // Step 3: Auto-retry once with stricter prompt
-  if (retryCount < 1) {
-    const strictPrompt = systemPrompt + "\n\nCRITICAL: You MUST return valid JSON with 'explanation' and 'code' fields. No markdown, just JSON.";
-    return chat(model, messages, strictPrompt, retryCount + 1, options);
-  }
+  throw new Error("Failed to get valid response from AI");
+}
 
-  // Step 4: Give up
-  throw new Error("Failed to get valid response from AI after retry");
+/** Main chat function - non-streaming, returns structured AIResponse */
+export async function chat(
+  model: ModelId,
+  messages: ChatMessage[],
+  systemPrompt: string,
+  retryCount = 0,
+  options?: { signal?: AbortSignal }
+): Promise<AIResponse> {
+  try {
+    return await streamingChat(model, messages, systemPrompt, { signal: options?.signal });
+  } catch (err) {
+    if (retryCount < 1) {
+      const strictPrompt = systemPrompt + "\n\nCRITICAL: You MUST return valid JSON with 'explanation' and 'code' fields. No markdown, just JSON.";
+      return chat(model, messages, strictPrompt, retryCount + 1, options);
+    }
+    throw err;
+  }
 }
 
 /** Extract raw text from response for fallback parsing */
@@ -251,7 +347,7 @@ function extractRawText(data: unknown, model: ModelId): string | null {
   return null;
 }
 
-/** Legacy streaming function - kept for compatibility but prefer chat() */
+/** Legacy streaming function - now uses real streaming */
 export async function streamChat(
   model: ModelId,
   messages: ChatMessage[],
@@ -260,14 +356,11 @@ export async function streamChat(
   onDone: () => void,
   options?: { signal?: AbortSignal }
 ): Promise<void> {
-  try {
-    const result = await chat(model, messages, systemPrompt, 0, options);
-    onChunk(JSON.stringify(result));
-    onDone();
-  } catch (err) {
-    onDone();
-    throw err;
-  }
+  await streamingChat(model, messages, systemPrompt, {
+    onChunk,
+    onDone,
+    signal: options?.signal
+  });
 }
 
 /** Legacy: Extract HTML code block from AI response */
