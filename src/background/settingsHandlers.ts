@@ -72,9 +72,16 @@ export async function handleGetDomainStatus(domain: string): Promise<{ ok: boole
   let domainEnabled = false;
   let domainSource: "user" | "meta" | "default" = "default";
 
+  // Auto-enable localhost for development
+  const isLocalhost = domain === "localhost" || domain === "127.0.0.1" || domain.endsWith(".localhost");
+
   if (pref) {
     domainEnabled = pref.enabled;
     domainSource = pref.source;
+  } else if (isLocalhost) {
+    // Localhost is auto-enabled by default for development
+    domainEnabled = true;
+    domainSource = "default";
   }
 
   const originAllowed = true;

@@ -79,7 +79,11 @@ export async function handleFetchRequest(req: PageFetchRequest): Promise<void> {
 
     postFetchResponse(resp);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = error instanceof Error
+      ? error.message
+      : (error && typeof error === "object" && "message" in error)
+        ? String((error as { message: unknown }).message)
+        : String(error);
     const errorResponse: FetchResponseToPage = {
       requestId: req.requestId,
       ok: false,

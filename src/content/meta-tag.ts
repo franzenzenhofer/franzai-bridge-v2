@@ -27,10 +27,14 @@ async function reportMetaTag(): Promise<void> {
   }
 }
 
-export function initMetaTagReporting(): void {
+export async function initMetaTagReporting(): Promise<void> {
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => void reportMetaTag());
+    await new Promise<void>((resolve) => {
+      document.addEventListener("DOMContentLoaded", () => {
+        reportMetaTag().finally(resolve);
+      });
+    });
   } else {
-    void reportMetaTag();
+    await reportMetaTag();
   }
 }

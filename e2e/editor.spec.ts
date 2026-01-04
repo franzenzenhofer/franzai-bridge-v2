@@ -1,6 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { test as baseTest, expect } from "@playwright/test";
+import { createServer, type Server } from "http";
 import fs from "fs";
 import path from "path";
+import { withExtension, waitForFranzai, type ExtensionContext } from "./extension-helpers";
 
 const editorRoot = path.resolve("public/editor");
 
@@ -12,36 +14,55 @@ function contentTypeFor(filePath: string): string {
   return "text/plain";
 }
 
-async function serveEditor(route: any) {
-  const requestUrl = new URL(route.request().url());
-  let filePath = requestUrl.pathname.replace(/^\/editor/, "");
-  if (!filePath || filePath === "/") {
-    filePath = "/index.html";
-  }
+// Create a real HTTP server for testing
+function startServer(port: number): Promise<Server> {
+  return new Promise((resolve) => {
+    const server = createServer((req, res) => {
+      let filePath = req.url?.replace(/^\//, "") || "index.html";
+      if (filePath === "" || filePath === "/") filePath = "index.html";
 
-  const fullPath = path.join(editorRoot, filePath);
-  if (!fs.existsSync(fullPath)) {
-    await route.fulfill({ status: 404, body: "Not found" });
-    return;
-  }
+      const fullPath = path.join(editorRoot, filePath);
+      if (!fs.existsSync(fullPath)) {
+        res.writeHead(404);
+        res.end("Not found");
+        return;
+      }
 
-  const body = fs.readFileSync(fullPath);
-  await route.fulfill({
-    status: 200,
-    contentType: contentTypeFor(fullPath),
-    body
+      const body = fs.readFileSync(fullPath);
+      res.writeHead(200, { "Content-Type": contentTypeFor(fullPath) });
+      res.end(body);
+    });
+    server.listen(port, () => resolve(server));
   });
 }
 
-test.describe("Editor", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.route("http://localhost:8765/editor**", serveEditor);
-  });
+// Custom test fixture with extension context and server
+const test = baseTest.extend<{ ext: ExtensionContext; editorUrl: string }>({
+  ext: async ({}, use) => {
+    const ext = await withExtension();
+    await use(ext);
+    await ext.context.close();
+    ext.cleanup();
+  },
+  editorUrl: async ({}, use) => {
+    const port = 8765 + Math.floor(Math.random() * 1000);
+    const server = await startServer(port);
+    await use(`http://localhost:${port}/`);
+    server.close();
+  }
+});
 
-  test("generates code from prompt", async ({ page }) => {
-    await page.goto("http://localhost:8765/editor");
+test.describe("Editor with Extension", () => {
+  test("generates code from prompt", async ({ ext, editorUrl }) => {
+    const page = await ext.context.newPage();
+    await page.goto(editorUrl);
 
-    await page.waitForFunction(() => Boolean((window as any).franzai));
+    // Wait for page to load and extension to inject franzai
+    await page.waitForLoadState("domcontentloaded");
+    const hasFranzai = await waitForFranzai(page, 15000);
+    expect(hasFranzai).toBe(true);
+
+    // Mock the fetch to return test data
     await page.evaluate(() => {
       const mockResponse = {
         candidates: [
@@ -65,13 +86,18 @@ test.describe("Editor", () => {
     await page.keyboard.press("Enter");
 
     const frame = page.frameLocator("iframe.preview-frame");
-    await expect(frame.locator("h1")).toHaveText("Hello World");
+    await expect(frame.locator("h1")).toHaveText("Hello World", { timeout: 15000 });
   });
 
-  test("shows streaming skeleton while waiting", async ({ page }) => {
-    await page.goto("http://localhost:8765/editor");
+  test("shows streaming skeleton while waiting", async ({ ext, editorUrl }) => {
+    const page = await ext.context.newPage();
+    await page.goto(editorUrl);
 
-    await page.waitForFunction(() => Boolean((window as any).franzai));
+    // Wait for page to load and extension to inject franzai
+    await page.waitForLoadState("domcontentloaded");
+    const hasFranzai = await waitForFranzai(page, 15000);
+    expect(hasFranzai).toBe(true);
+
     await page.evaluate(() => {
       (window as any).franzai.fetch = async () => {
         await new Promise((resolve) => setTimeout(resolve, 600));
@@ -90,11 +116,11 @@ test.describe("Editor", () => {
       };
     });
 
-    await page.fill(".chat-input", "Make a delayed response" );
+    await page.fill(".chat-input", "Make a delayed response");
     await page.keyboard.press("Enter");
 
-    await expect(page.locator(".typing-dots")).toBeVisible();
+    await expect(page.locator(".typing-dots")).toBeVisible({ timeout: 5000 });
     const frame = page.frameLocator("iframe.preview-frame");
-    await expect(frame.locator("h1")).toHaveText("Delayed");
+    await expect(frame.locator("h1")).toHaveText("Delayed", { timeout: 15000 });
   });
 });

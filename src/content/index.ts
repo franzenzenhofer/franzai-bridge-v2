@@ -8,10 +8,13 @@ const log = createLogger("content");
 
 export function initContentScript(): void {
   registerBackgroundPort();
-  initMetaTagReporting();
   registerPageRouter();
 
-  sendInitialDomainStatus().catch((e) => {
-    log.warn("Failed to send initial domain status", e);
-  });
+  // Meta tag must be reported BEFORE we send domain status
+  // Otherwise status will show disabled even when meta tag exists
+  initMetaTagReporting()
+    .then(() => sendInitialDomainStatus())
+    .catch((e) => {
+      log.warn("Failed to initialize domain status", e);
+    });
 }

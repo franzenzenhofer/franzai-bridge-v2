@@ -29,8 +29,9 @@ export function sendRuntimeMessage<TReq, TRes>(
 
         const err = chrome.runtime.lastError;
         if (err) {
-          log.warn("sendMessage failed", err.message || err);
-          reject(err);
+          const msg = err.message || "Unknown chrome runtime error";
+          log.warn("sendMessage failed", msg);
+          reject(new Error(msg));
           return;
         }
 
