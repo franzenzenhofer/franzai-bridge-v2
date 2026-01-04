@@ -49,6 +49,11 @@ function render(): void {
   const header = el("div", "editor-pane-header");
 
   const tabs = el("div", "view-tabs");
+
+  // Reload button - same style as tabs, left of Preview
+  const reloadTab = el("button", "view-tab reload-tab", "↻ Reload");
+  reloadTab.onclick = () => updatePreview();
+
   const previewTab = el("button", "view-tab", "Preview");
   const codeTab = el("button", "view-tab", "Code");
   const requestTab = el("button", "view-tab", "Request/Response");
@@ -57,6 +62,7 @@ function render(): void {
   codeTab.onclick = () => setState({ view: "code" });
   requestTab.onclick = () => setState({ view: "request" });
 
+  tabs.appendChild(reloadTab);
   tabs.appendChild(previewTab);
   tabs.appendChild(codeTab);
   tabs.appendChild(requestTab);
@@ -107,14 +113,6 @@ function render(): void {
   // Preview container
   previewContainer = el("div", "preview-container") as HTMLDivElement;
   previewContainer.id = "preview-container";
-
-  const previewToolbar = el("div", "preview-toolbar");
-
-  const reloadBtn = el("button", "device-btn", "↻ Reload");
-  reloadBtn.onclick = () => updatePreview();
-  previewToolbar.appendChild(reloadBtn);
-
-  previewContainer.appendChild(previewToolbar);
 
   previewStage = el("div", "preview-stage") as HTMLDivElement;
   previewFrame = el("iframe", "preview-frame") as HTMLIFrameElement;

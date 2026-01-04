@@ -1,6 +1,6 @@
 import type { FetchEnvelope, FetchRequestFromPage, FetchResponseToPage } from "../../shared/types";
 import { BG_EVT, type BgEvent } from "../../shared/messages";
-import { appendLog, getSettings } from "../../shared/storage";
+import { appendLog, updateLog, getSettings } from "../../shared/storage";
 import { FETCH_TIMEOUT_MS } from "../../shared/constants";
 import { createLogger } from "../../shared/logger";
 import { finalizeWithError, makeErrorResponse } from "./errors";
@@ -69,6 +69,11 @@ export async function handleFetch(
 
   trackInFlight(payload.requestId, controller);
 
+  // Immediately add pending log entry so sidepanel shows request right away
+  logEntry.statusText = "Pending...";
+  await appendLog(logEntry, settings.maxLogs);
+  broadcast({ type: BG_EVT.LOGS_UPDATED });
+
   try {
     const res = await fetchWithRetry(url.toString(), fetchInit, controller.signal, retryOptions);
     const readResult = await readResponse({ requestId: payload.requestId, res, started });
@@ -78,7 +83,8 @@ export async function handleFetch(
 
     applyResponseToLog(logEntry, readResult);
 
-    await appendLog(logEntry, settings.maxLogs);
+    // Update existing log entry with response data
+    await updateLog(logEntry.id, logEntry);
     broadcast({ type: BG_EVT.LOGS_UPDATED });
 
     if (cacheOptions && (fetchInit.method ?? "GET").toUpperCase() === "GET") {
@@ -110,7 +116,8 @@ export async function handleFetch(
     logEntry.statusText = statusText;
     logEntry.elapsedMs = elapsedMs;
 
-    await appendLog(logEntry, settings.maxLogs);
+    // Update existing log entry with error
+    await updateLog(logEntry.id, logEntry);
     broadcast({ type: BG_EVT.LOGS_UPDATED });
 
     const responseToPage: FetchResponseToPage = {

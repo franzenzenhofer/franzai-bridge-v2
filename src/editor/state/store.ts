@@ -345,3 +345,28 @@ function updateDocumentTitle(code: string): void {
     document.title = `${match[1]} - Bridge`;
   }
 }
+
+/** Reset project to initial state and clear localStorage */
+export function resetProject(): void {
+  if (typeof localStorage !== "undefined") {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  const fresh: EditorState = {
+    ...initialState,
+    extension: state.extension,
+    keys: state.keys,
+    history: [{ code: DEFAULT_CODE, timestamp: Date.now() }],
+    historyIndex: 0
+  };
+
+  state = fresh;
+
+  for (const listener of listeners) {
+    listener(state, PERSIST_KEYS);
+  }
+
+  if (typeof document !== "undefined") {
+    document.title = "Bridge AI IDE";
+  }
+}

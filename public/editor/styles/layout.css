@@ -37,6 +37,23 @@ html, body {
   font-size: 11px;
 }
 
+.status-bar .new-project-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.status-bar .new-project-btn:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
 .status-bar .keys {
   display: flex;
   gap: var(--space-sm);

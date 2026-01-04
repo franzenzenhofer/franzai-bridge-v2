@@ -1,7 +1,7 @@
 import { STREAM_MSG, type StreamPortMessage, type StreamStartPayload } from "../shared/stream-types";
 import { STREAM_HEADER_TIMEOUT_MS, STREAM_INACTIVITY_TIMEOUT_MS, STREAM_PORT_NAME, RESPONSE_BODY_PREVIEW_LIMIT } from "../shared/constants";
 import { createLogger } from "../shared/logger";
-import { getSettings, appendLog } from "../shared/storage";
+import { getSettings, appendLog, updateLog } from "../shared/storage";
 import { buildRequestContext } from "./fetch/request";
 import { isEventStream, isTextualResponse } from "../shared/content-type";
 import { previewBody } from "./fetch/preview";
@@ -67,6 +67,11 @@ async function handleStreamStart(payload: StreamStartPayload, port: chrome.runti
   const controller = new AbortController();
   const session: StreamSession = { port, controller, started, requestId: payload.requestId, logEntry };
   sessions.set(payload.requestId, session);
+
+  // Immediately add pending log entry so sidepanel shows request right away
+  logEntry.statusText = "Streaming...";
+  await appendLog(logEntry, settings.maxLogs);
+  broadcast({ type: BG_EVT.LOGS_UPDATED });
 
   let headerTimeout: number | null = null;
   let inactivityTimeout: number | null = null;
@@ -153,14 +158,16 @@ async function handleStreamStart(payload: StreamStartPayload, port: chrome.runti
       ? previewBody(textPreview, RESPONSE_BODY_PREVIEW_LIMIT)
       : `[binary stream ${binaryBytes} bytes]`;
 
-    await appendLog(logEntry, settings.maxLogs);
+    // Update existing log entry with final response data
+    await updateLog(logEntry.id, logEntry);
     broadcast({ type: BG_EVT.LOGS_UPDATED });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     logEntry.error = message;
     logEntry.statusText = "Stream Error";
     logEntry.elapsedMs = Date.now() - started;
-    await appendLog(logEntry, settings.maxLogs);
+    // Update existing log entry with error
+    await updateLog(logEntry.id, logEntry);
     broadcast({ type: BG_EVT.LOGS_UPDATED });
 
     port.postMessage({ type: STREAM_MSG.ERROR, payload: { requestId: payload.requestId, message } });

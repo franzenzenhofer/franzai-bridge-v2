@@ -3,7 +3,7 @@
  */
 
 import { el } from "../utils/dom";
-import { getState, subscribe, setState } from "../state/store";
+import { getState, subscribe, setState, resetProject } from "../state/store";
 
 export function initStatusBar(): void {
   const container = document.getElementById("status-bar");
@@ -35,6 +35,16 @@ function render(): void {
     ? `v${state.extension.version}`
     : "Disconnected";
   container.appendChild(version);
+
+  // New Project button
+  const newProjectBtn = el("button", "new-project-btn", "New Project");
+  newProjectBtn.title = "Reset everything and start a new project";
+  newProjectBtn.onclick = () => {
+    if (confirm("Start a new project? This will clear all code, chat history, and context files.")) {
+      resetProject();
+    }
+  };
+  container.appendChild(newProjectBtn);
 
   // Key indicators
   const keys = el("div", "keys");

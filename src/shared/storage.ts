@@ -89,6 +89,16 @@ export async function removeLog(logId: string): Promise<void> {
   await setLogs(nextLogs);
 }
 
+/** Update an existing log entry by ID */
+export async function updateLog(logId: string, updates: Partial<LogEntry>): Promise<void> {
+  const logs = await getLogs();
+  const index = logs.findIndex((log) => log.id === logId);
+  if (index !== -1) {
+    logs[index] = { ...logs[index], ...updates };
+    await setLogs(logs);
+  }
+}
+
 // =============================================================================
 // Domain Preferences Storage
 // =============================================================================
