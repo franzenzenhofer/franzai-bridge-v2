@@ -18,10 +18,6 @@ let previewStage: HTMLDivElement | null = null;
 let previewContainer: HTMLDivElement | null = null;
 let debounceTimer: number | null = null;
 
-type PreviewDevice = "desktop" | "tablet" | "mobile";
-let previewDevice: PreviewDevice = "desktop";
-let deviceButtons: Partial<Record<PreviewDevice, HTMLButtonElement>> = {};
-
 export function initEditorPane(): void {
   const container = document.getElementById("editor-pane");
   if (!container) return;
@@ -113,14 +109,6 @@ function render(): void {
   previewContainer.id = "preview-container";
 
   const previewToolbar = el("div", "preview-toolbar");
-  deviceButtons = {
-    desktop: createDeviceButton("Desktop", "desktop"),
-    tablet: createDeviceButton("Tablet", "tablet"),
-    mobile: createDeviceButton("Mobile", "mobile")
-  };
-  previewToolbar.appendChild(deviceButtons.desktop ?? el("span"));
-  previewToolbar.appendChild(deviceButtons.tablet ?? el("span"));
-  previewToolbar.appendChild(deviceButtons.mobile ?? el("span"));
 
   const reloadBtn = el("button", "device-btn", "↻ Reload");
   reloadBtn.onclick = () => updatePreview();
@@ -146,46 +134,8 @@ function render(): void {
   // Initialize CodeMirror
   initCodeMirror();
   updateViewVisibility();
-  applyPreviewDevice(previewDevice);
   updatePreview();
   updateRequestPane();
-}
-
-function createDeviceButton(label: string, device: PreviewDevice): HTMLButtonElement {
-  const button = el("button", "device-toggle", label) as HTMLButtonElement;
-  button.onclick = () => setPreviewDevice(device);
-  return button;
-}
-
-function setPreviewDevice(device: PreviewDevice): void {
-  previewDevice = device;
-  applyPreviewDevice(device);
-  updateDeviceButtonState();
-}
-
-function updateDeviceButtonState(): void {
-  (Object.keys(deviceButtons) as PreviewDevice[]).forEach((key) => {
-    const btn = deviceButtons[key];
-    if (!btn) return;
-    if (key === previewDevice) {
-      btn.classList.add("active");
-    } else {
-      btn.classList.remove("active");
-    }
-  });
-}
-
-function applyPreviewDevice(device: PreviewDevice): void {
-  if (!previewFrame || !previewStage) return;
-  let width = "100%";
-
-  if (device === "tablet") width = "768px";
-  if (device === "mobile") width = "375px";
-
-  previewFrame.style.width = width;
-  previewFrame.style.margin = device === "desktop" ? "0" : "0 auto";
-  previewStage.style.overflow = device === "desktop" ? "hidden" : "auto";
-  updateDeviceButtonState();
 }
 
 function initCodeMirror(): void {
