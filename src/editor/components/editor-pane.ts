@@ -127,6 +127,7 @@ function render(): void {
   previewFrame = el("iframe", "preview-frame") as HTMLIFrameElement;
   previewFrame.sandbox.add("allow-scripts");
   previewFrame.sandbox.add("allow-popups");
+  previewFrame.sandbox.add("allow-same-origin");
   previewStage.appendChild(previewFrame);
   previewContainer.appendChild(previewStage);
 
