@@ -7,6 +7,7 @@ import { registerBridgeEventListeners } from "./bridge-events";
 import { createFranzaiBridge } from "./franzai-api";
 import { createHookManager } from "./hooks";
 import { createHookedFetch } from "./hooked-fetch";
+import { createHookedWebSocket } from "./hooked-websocket";
 import { ensureDomainEnabled, ensureDomainStatus, getCachedDomainEnabledValue } from "./domain-status";
 import { requestToLite } from "./request";
 import { setRequestMode } from "./request-meta";
@@ -31,14 +32,18 @@ export function initBridge(capture: CaptureState): void {
     bridgeConfig,
     hookState
   });
+  const hookedWebSocket = createHookedWebSocket(capture.nativeWebSocket, bridgeConfig);
 
   const hookManager = createHookManager({
     nativeFetch: capture.nativeFetch,
     nativeRequest: capture.nativeRequest,
+    nativeWebSocket: capture.nativeWebSocket,
     nativeFetchDescriptor: capture.nativeFetchDescriptor,
     nativeRequestDescriptor: capture.nativeRequestDescriptor,
+    nativeWebSocketDescriptor: capture.nativeWebSocketDescriptor,
     bridgeConfig,
     hookedFetch,
+    hookedWebSocket,
     hookState,
     setRequestMode,
     modeFromInit,

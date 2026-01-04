@@ -14,6 +14,7 @@ import {
   handleSetSettings,
   handleGetLogs,
   handleClearLogs,
+  handleRemoveLog,
   handleIsKeySet,
   handleGetKeyNames,
   handleGetDomainStatus,
@@ -45,6 +46,8 @@ const handlers: Record<string, Handler> = {
   [BG_MSG.GET_LOGS]: async () => handleGetLogs(),
   [BG_MSG.CLEAR_LOGS]: async (_msg, _sender, ctx) =>
     handleClearLogs(ctx.broadcast),
+  [BG_MSG.REMOVE_LOG]: async (msg, _sender, ctx) =>
+    handleRemoveLog((msg.payload as { logId?: string } | undefined)?.logId ?? "", ctx.broadcast),
   [BG_MSG.IS_KEY_SET]: async (msg) =>
     handleIsKeySet((msg.payload as { keyName?: string } | undefined)?.keyName ?? ""),
   [BG_MSG.GET_KEY_NAMES]: async () => handleGetKeyNames(),

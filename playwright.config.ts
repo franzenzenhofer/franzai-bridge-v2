@@ -4,7 +4,8 @@ import dotenv from "dotenv";
 
 // Load environment variables from .env
 dotenv.config();
-const headlessRequested = process.env.PW_EXT_HEADLESS !== "0";
+const headlessRequested = process.env.PW_EXT_HEADLESS === "1";
+const useSystemChrome = process.env.PW_USE_SYSTEM_CHROME !== "0";
 
 /**
  * Playwright configuration for e2e testing Chrome extension
@@ -31,10 +32,13 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         // Launch Chrome with extension loaded
         launchOptions: {
+          ...(useSystemChrome ? { channel: "chrome" } : {}),
           args: [
             ...(headlessRequested ? ["--headless=new"] : []),
             `--disable-extensions-except=${path.resolve("./dist")}`,
             `--load-extension=${path.resolve("./dist")}`,
+            "--disable-crashpad",
+            "--disable-crash-reporter",
             "--no-sandbox",
             "--disable-setuid-sandbox"
           ]
@@ -45,7 +49,7 @@ export default defineConfig({
 
   // Build extension before running tests
   webServer: {
-    command: "npm run build:nobump",
+    command: "npm run build:nobump && npm run build:editor",
     reuseExistingServer: !process.env.CI,
     timeout: 30000
   }

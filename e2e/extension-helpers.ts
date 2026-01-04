@@ -6,6 +6,7 @@ import { prepareProfileDir, cleanupProfileDir, describeProfileChoice } from "../
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.resolve(__dirname, "../dist");
+const useSystemChrome = process.env.PW_USE_SYSTEM_CHROME !== "0";
 
 export type ExtensionContext = {
   context: BrowserContext;
@@ -18,6 +19,8 @@ const buildArgs = (headlessRequested: boolean) => {
   const args = [
     "--disable-gpu",
     "--no-sandbox",
+    "--disable-crashpad",
+    "--disable-crash-reporter",
     "--disable-dev-shm-usage",
     `--disable-extensions-except=${dist}`,
     `--load-extension=${dist}`,
@@ -32,8 +35,9 @@ export const withExtension = async (): Promise<ExtensionContext> => {
   }
   const profile = prepareProfileDir();
   console.info(`[e2e] Using ${describeProfileChoice(profile)}`);
-  const headlessRequested = process.env.PW_EXT_HEADLESS !== "0";
+  const headlessRequested = process.env.PW_EXT_HEADLESS === "1";
   const context = await chromium.launchPersistentContext(profile.userDataDir, {
+    ...(useSystemChrome ? { channel: "chrome" } : {}),
     args: buildArgs(headlessRequested),
     // Extensions require full Chrome; keep headed and use --headless=new when requested.
     headless: false

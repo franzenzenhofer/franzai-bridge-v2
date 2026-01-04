@@ -6,3 +6,7 @@ dist/
 *.local
 test-results/
 playwright-report/
+
+# Compiled editor bundle (built from src/editor/*.ts)
+public/editor/editor.js
+public/editor/editor.js.map

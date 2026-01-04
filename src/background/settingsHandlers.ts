@@ -7,6 +7,7 @@ import {
   setSettings,
   getLogs,
   clearLogs,
+  removeLog,
   getDomainPreference,
   getDomainPreferences,
   setDomainPreference,
@@ -36,6 +37,13 @@ export async function handleGetLogs(): Promise<{ ok: boolean; logs: LogEntry[] }
 
 export async function handleClearLogs(broadcast: (evt: BgEvent) => void): Promise<{ ok: boolean }> {
   await clearLogs();
+  broadcast({ type: BG_EVT.LOGS_UPDATED });
+  return { ok: true };
+}
+
+export async function handleRemoveLog(logId: string, broadcast: (evt: BgEvent) => void): Promise<{ ok: boolean }> {
+  if (!logId) return { ok: false };
+  await removeLog(logId);
   broadcast({ type: BG_EVT.LOGS_UPDATED });
   return { ok: true };
 }

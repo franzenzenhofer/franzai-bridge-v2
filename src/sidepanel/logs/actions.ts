@@ -1,6 +1,6 @@
 import { clearLogs } from "../data/settings";
 import { showToast } from "../ui/toast";
-import { exportLogs } from "./export";
+import { exportHar, exportLogs } from "./export";
 
 export function initLogActions(onRefresh: () => Promise<void> | void): void {
   const refreshBtn = document.getElementById("btnRefresh") as HTMLButtonElement | null;
@@ -24,5 +24,10 @@ export function initLogActions(onRefresh: () => Promise<void> | void): void {
   const exportBtn = document.getElementById("btnExportLogs") as HTMLButtonElement | null;
   if (exportBtn) {
     exportBtn.onclick = () => exportLogs();
+  }
+
+  const exportHarBtn = document.getElementById("btnExportHar") as HTMLButtonElement | null;
+  if (exportHarBtn) {
+    exportHarBtn.onclick = () => exportHar();
   }
 }

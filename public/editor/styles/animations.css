@@ -1,0 +1,16 @@
+/* Bridge AI IDE - Animations */
+
+@keyframes flash-update {
+  0% { opacity: 0.7; filter: blur(2px); }
+  100% { opacity: 1; filter: blur(0); }
+}
+
+@keyframes fade-pulse {
+  0% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+@keyframes slide-in {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}

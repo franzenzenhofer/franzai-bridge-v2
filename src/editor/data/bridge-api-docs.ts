@@ -1,24 +1,31 @@
 /**
- * Bridge AI IDE - Embedded Bridge API Documentation
- * This is included in every AI system prompt for full context
+ * Bridge AI IDE - Comprehensive Knowledge Base
+ * Full API docs, examples, patterns for AI context
  */
 
-export const BRIDGE_API_DOCS = `## Bridge API Reference
+export const BRIDGE_API_DOCS = `## What is FranzAI Bridge?
 
-### window.franzai (always available when extension installed)
+FranzAI Bridge is a Chrome extension that enables browser-based apps to:
+1. **Bypass CORS** - Make API calls to any endpoint from any webpage
+2. **Inject API keys** - Your keys stay secure in the extension, never exposed in code
+3. **Google OAuth** - Authenticate with Google services seamlessly
+
+## Bridge API Reference
+
+### window.franzai (Core API)
 \`\`\`typescript
 interface FranzAI {
-  version: string;                          // Bridge version
-  keys: string[];                           // Available key names: ["openai", "anthropic", ...]
+  version: string;                          // Bridge version (e.g., "2.0.83")
+  keys: string[];                           // Available keys: ["openai", "anthropic", "google", "mistral"]
 
-  // CORS-bypassing fetch (auto-injects API keys)
+  // CORS-bypassing fetch - API keys auto-injected based on URL
   fetch(url: string, init?: RequestInit): Promise<Response>;
 
   // Check if specific API key is configured
   hasApiKey(keyName: string): Promise<boolean>;
 
   // Get extension status
-  getStatus(): Promise<BridgeStatus>;
+  getStatus(): Promise<{ ready: boolean; version: string; keys: string[] }>;
 
   // Ping extension
   ping(): Promise<{ ok: true; version: string }>;
@@ -29,7 +36,7 @@ interface FranzAI {
 \`\`\`typescript
 interface GoogleAPI {
   // Authenticate (triggers OAuth popup if needed)
-  auth(scopes?: string[]): Promise<GoogleAuthState>;
+  auth(scopes?: string[]): Promise<{ authenticated: boolean; email: string; scopes: string[] }>;
 
   // Authenticated fetch (auto-adds Bearer token)
   fetch(url: string, init?: RequestInit): Promise<Response>;
@@ -44,41 +51,298 @@ interface GoogleAPI {
 }
 \`\`\`
 
-### Example: OpenAI API call
+## Supported AI Providers
+
+| Provider | API Key Name | Base URL |
+|----------|--------------|----------|
+| OpenAI | openai | https://api.openai.com |
+| Anthropic | anthropic | https://api.anthropic.com |
+| Google Gemini | google | https://generativelanguage.googleapis.com |
+| Mistral | mistral | https://api.mistral.ai |
+
+## Complete Examples
+
+### Example 1: OpenAI Chat Completion
 \`\`\`javascript
-const response = await window.franzai.fetch('https://api.openai.com/v1/chat/completions', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    model: 'gpt-4o',
-    messages: [{ role: 'user', content: 'Hello!' }]
-  })
-});
-const data = await response.json();
+async function askOpenAI(question) {
+  const response = await window.franzai.fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: question }]
+    })
+  });
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
 \`\`\`
 
-### Example: Anthropic Claude API call
+### Example 2: Anthropic Claude
 \`\`\`javascript
-const response = await window.franzai.fetch('https://api.anthropic.com/v1/messages', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 1024,
-    messages: [{ role: 'user', content: 'Hello!' }]
-  })
-});
-const data = await response.json();
+async function askClaude(question) {
+  const response = await window.franzai.fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: question }]
+    })
+  });
+  const data = await response.json();
+  return data.content[0].text;
+}
 \`\`\`
 
-### Example: Google Search Console
+### Example 3: Google Gemini
 \`\`\`javascript
-// First authenticate
-await window.franzai.google.auth(['https://www.googleapis.com/auth/webmasters.readonly']);
+async function askGemini(question) {
+  const response = await window.franzai.fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: question }] }]
+      })
+    }
+  );
+  const data = await response.json();
+  return data.candidates[0].content.parts[0].text;
+}
+\`\`\`
 
-// Then fetch
-const response = await window.franzai.google.fetch(
-  'https://www.googleapis.com/webmasters/v3/sites'
-);
-const sites = await response.json();
-\`\`\``;
+### Example 4: Google Search Console with OAuth
+\`\`\`javascript
+async function getSearchConsoleSites() {
+  // First authenticate with required scope
+  await window.franzai.google.auth(['https://www.googleapis.com/auth/webmasters.readonly']);
+
+  // Then fetch with auto-injected Bearer token
+  const response = await window.franzai.google.fetch(
+    'https://www.googleapis.com/webmasters/v3/sites'
+  );
+  const data = await response.json();
+  return data.siteEntry || [];
+}
+\`\`\`
+
+### Example 5: Image Generation with DALL-E
+\`\`\`javascript
+async function generateImage(prompt) {
+  const response = await window.franzai.fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'dall-e-3',
+      prompt: prompt,
+      size: '1024x1024',
+      n: 1
+    })
+  });
+  const data = await response.json();
+  return data.data[0].url;
+}
+\`\`\`
+
+## Complete App Templates
+
+### Template: AI Chat Widget
+A complete chat interface with message history:
+
+\`\`\`html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Chat</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, sans-serif; background: #f5f5f5; min-height: 100vh; display: flex; flex-direction: column; }
+    .container { max-width: 800px; margin: 0 auto; padding: 20px; flex: 1; display: flex; flex-direction: column; }
+    h1 { text-align: center; color: #333; margin-bottom: 20px; }
+    .chat { flex: 1; background: white; border-radius: 12px; padding: 20px; overflow-y: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .message { margin: 12px 0; padding: 12px 16px; border-radius: 12px; max-width: 80%; }
+    .user { background: #007bff; color: white; margin-left: auto; }
+    .assistant { background: #e9ecef; color: #333; }
+    .input-row { display: flex; gap: 12px; margin-top: 20px; }
+    input { flex: 1; padding: 16px; border: 2px solid #ddd; border-radius: 12px; font-size: 16px; }
+    input:focus { outline: none; border-color: #007bff; }
+    button { padding: 16px 32px; background: #007bff; color: white; border: none; border-radius: 12px; font-size: 16px; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>AI Chat</h1>
+    <div class="chat" id="chat"></div>
+    <div class="input-row">
+      <input type="text" id="input" placeholder="Type your message..." autofocus>
+      <button id="send">Send</button>
+    </div>
+  </div>
+  <script>
+    const chat = document.getElementById('chat');
+    const input = document.getElementById('input');
+    const sendBtn = document.getElementById('send');
+    const messages = [];
+
+    function addMessage(role, content) {
+      messages.push({ role, content });
+      const div = document.createElement('div');
+      div.className = 'message ' + role;
+      div.textContent = content;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    async function send() {
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      sendBtn.disabled = true;
+      addMessage('user', text);
+
+      try {
+        const response = await window.franzai.fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: messages.map(m => ({ role: m.role, content: m.content }))
+          })
+        });
+        const data = await response.json();
+        addMessage('assistant', data.choices[0].message.content);
+      } catch (err) {
+        addMessage('assistant', 'Error: ' + err.message);
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    sendBtn.onclick = send;
+    input.onkeydown = e => { if (e.key === 'Enter') send(); };
+  </script>
+</body>
+</html>
+\`\`\`
+
+### Template: Click Counter Game
+Simple interactive game:
+
+\`\`\`html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Click Counter</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .game { background: white; border-radius: 24px; padding: 48px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    h1 { color: #333; margin-bottom: 24px; font-size: 28px; }
+    .count { font-size: 72px; font-weight: bold; color: #667eea; margin: 24px 0; }
+    button { padding: 20px 48px; font-size: 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 16px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; }
+    button:hover { transform: scale(1.05); box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4); }
+    button:active { transform: scale(0.95); }
+    .reset { margin-top: 24px; padding: 12px 24px; font-size: 14px; background: #eee; color: #666; border: none; border-radius: 8px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="game">
+    <h1>Click Counter Game</h1>
+    <div class="count" id="count">0</div>
+    <button id="click">CLICK ME!</button>
+    <br>
+    <button class="reset" id="reset">Reset</button>
+  </div>
+  <script>
+    let count = 0;
+    const countEl = document.getElementById('count');
+    const clickBtn = document.getElementById('click');
+    const resetBtn = document.getElementById('reset');
+
+    clickBtn.onclick = () => {
+      count++;
+      countEl.textContent = count;
+      countEl.style.transform = 'scale(1.2)';
+      setTimeout(() => countEl.style.transform = 'scale(1)', 100);
+    };
+
+    resetBtn.onclick = () => {
+      count = 0;
+      countEl.textContent = '0';
+    };
+  </script>
+</body>
+</html>
+\`\`\`
+
+## Common Patterns
+
+### Error Handling Pattern
+\`\`\`javascript
+async function safeApiCall(url, options) {
+  try {
+    const response = await window.franzai.fetch(url, options);
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(\`API Error \${response.status}: \${error}\`);
+    }
+    return await response.json();
+  } catch (err) {
+    console.error('API call failed:', err);
+    throw err;
+  }
+}
+\`\`\`
+
+### Loading State Pattern
+\`\`\`javascript
+async function withLoading(button, asyncFn) {
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Loading...';
+  try {
+    return await asyncFn();
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+\`\`\`
+
+### Check Bridge Availability
+\`\`\`javascript
+function checkBridge() {
+  if (!window.franzai) {
+    alert('FranzAI Bridge extension not installed!');
+    return false;
+  }
+  return true;
+}
+\`\`\`
+
+## Response Format Instructions
+
+You MUST return responses in this JSON format:
+{
+  "explanation": "A friendly explanation of what you built or changed",
+  "code": "The complete HTML file with all CSS in <style> and all JS in <script>",
+  "changes": ["List of specific changes made"]
+}
+
+IMPORTANT:
+- Always return COMPLETE working HTML
+- All CSS must be in <style> tags
+- All JavaScript must be in <script> tags
+- Use window.franzai.fetch() for all API calls
+- Handle errors gracefully with try/catch
+- Make the UI beautiful and responsive`;

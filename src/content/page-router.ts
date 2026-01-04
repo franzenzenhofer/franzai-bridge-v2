@@ -5,6 +5,7 @@ import { handleFetchAbort, handleFetchRequest } from "./handlers/fetch";
 import { handleKeyCheck } from "./handlers/key-check";
 import { handleKeysRequest } from "./handlers/keys";
 import { handleStatusRequest } from "./handlers/status";
+import { handleStreamAbort, handleStreamRequest } from "./handlers/stream";
 import {
   handleGoogleAuth,
   handleGoogleLogout,
@@ -12,6 +13,7 @@ import {
   handleGoogleHasScopes,
   handleGoogleFetch
 } from "./handlers/google";
+import { handleWebSocketClose, handleWebSocketConnect, handleWebSocketSend } from "./handlers/ws";
 
 const log = createLogger("content-router");
 
@@ -53,6 +55,17 @@ export function registerPageRouter(): void {
       return;
     }
 
+    if (data.type === PAGE_MSG.STREAM_REQUEST) {
+      await handleStreamRequest(data.payload);
+      return;
+    }
+
+    if (data.type === PAGE_MSG.STREAM_ABORT) {
+      if (!data.payload?.requestId) return;
+      await handleStreamAbort(data.payload.requestId);
+      return;
+    }
+
     if (data.type === PAGE_MSG.GOOGLE_AUTH_REQUEST) {
       await handleGoogleAuth(data.payload.authId, data.payload.scopes);
       return;
@@ -75,6 +88,20 @@ export function registerPageRouter(): void {
 
     if (data.type === PAGE_MSG.GOOGLE_FETCH_REQUEST) {
       await handleGoogleFetch(data.payload);
+    }
+
+    if (data.type === PAGE_MSG.WS_CONNECT) {
+      await handleWebSocketConnect(data.payload);
+      return;
+    }
+
+    if (data.type === PAGE_MSG.WS_SEND) {
+      handleWebSocketSend(data.payload);
+      return;
+    }
+
+    if (data.type === PAGE_MSG.WS_CLOSE) {
+      handleWebSocketClose(data.payload);
     }
   });
 }

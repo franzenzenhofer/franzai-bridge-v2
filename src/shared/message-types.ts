@@ -31,6 +31,7 @@ export type BgMessage =
   | { type: typeof BG_MSG.SET_SETTINGS; payload: BridgeSettings }
   | { type: typeof BG_MSG.GET_LOGS }
   | { type: typeof BG_MSG.CLEAR_LOGS }
+  | { type: typeof BG_MSG.REMOVE_LOG; payload: { logId: string } }
   | { type: typeof BG_MSG.IS_KEY_SET; payload: { keyName: string } }
   | { type: typeof BG_MSG.GET_KEY_NAMES }
   | { type: typeof BG_MSG.GET_DOMAIN_STATUS; payload: { domain: string } }

@@ -768,6 +768,10 @@ textarea.error {
   border-bottom: 1px solid var(--border);
 }
 
+.detail-section.collapsed pre {
+  display: none;
+}
+
 .section-header {
   display: flex;
   justify-content: space-between;

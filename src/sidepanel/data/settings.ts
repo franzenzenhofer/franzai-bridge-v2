@@ -47,3 +47,13 @@ export async function clearLogs(): Promise<{ ok: boolean; error?: string }> {
     type: BG_MSG.CLEAR_LOGS
   });
 }
+
+export async function removeLog(logId: string): Promise<{ ok: boolean; error?: string }> {
+  return sendRuntimeMessage<
+    { type: typeof BG_MSG.REMOVE_LOG; payload: { logId: string } },
+    { ok: boolean; error?: string }
+  >({
+    type: BG_MSG.REMOVE_LOG,
+    payload: { logId }
+  });
+}

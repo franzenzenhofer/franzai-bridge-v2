@@ -37,5 +37,14 @@ export type FranzAIBridge = {
   hasApiKey(keyName: string): Promise<boolean>;
   keys: string[];
   getStatus(): Promise<BridgeStatus>;
+  addInterceptor(fn: RequestInterceptor): () => void;
+  addResponseHandler(fn: ResponseHandler): () => void;
   google: GoogleAPI;
 };
+
+export type RequestInterceptor = (
+  input: RequestInfo | URL,
+  init?: BridgeInit
+) => { input?: RequestInfo | URL; init?: BridgeInit } | void;
+
+export type ResponseHandler = (response: Response) => Response | Promise<Response>;

@@ -68,6 +68,7 @@ export function renderDomainsTable(onUpdate: () => Promise<void> | void): void {
 
   for (const domain of domains) {
     const pref = state.allDomainPrefs[domain];
+    if (!pref) continue;
     const row = document.createElement("div");
     row.className = `domain-row ${pref.enabled ? "enabled" : "disabled"}`;
 

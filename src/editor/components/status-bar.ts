@@ -18,6 +18,7 @@ function render(): void {
   if (!container) return;
 
   const state = getState();
+  const health = getProviderHealth();
 
   // Clear using DOM method
   while (container.firstChild) {
@@ -48,12 +49,39 @@ function render(): void {
     const indicator = el("div", "key-indicator");
     const dot = el("span", "key-dot");
     if (state.keys[key]) dot.classList.add("active");
+    if (health[key] === "warning") {
+      dot.classList.remove("active");
+      dot.classList.add("warning");
+    }
+    if (health[key] === "error") {
+      dot.classList.remove("active");
+      dot.classList.add("error");
+    }
     indicator.appendChild(dot);
     indicator.appendChild(document.createTextNode(label));
     keys.appendChild(indicator);
   }
 
   container.appendChild(keys);
+}
+
+function getProviderHealth(): Record<"openai" | "anthropic" | "google", "ok" | "warning" | "error"> {
+  const state = getState();
+  const health = { openai: "ok", anthropic: "ok", google: "ok" } as const;
+  const status = state.lastResponse?.status;
+  const url = state.lastRequest?.url ?? "";
+
+  if (!status || !url) return health;
+
+  let provider: keyof typeof health | null = null;
+  if (url.includes("api.openai.com")) provider = "openai";
+  if (url.includes("api.anthropic.com")) provider = "anthropic";
+  if (url.includes("generativelanguage.googleapis.com")) provider = "google";
+
+  if (!provider) return health;
+  if (status === 401) return { ...health, [provider]: "error" };
+  if (status === 429) return { ...health, [provider]: "warning" };
+  return health;
 }
 
 export async function checkExtension(): Promise<void> {

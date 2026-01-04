@@ -23,11 +23,12 @@ function toRules(value: unknown): InjectionRule[] {
     if (!item || typeof item !== "object") continue;
     const rule = item as Partial<InjectionRule>;
     if (typeof rule.hostPattern !== "string") continue;
-    rules.push({
-      hostPattern: rule.hostPattern,
-      injectHeaders: rule.injectHeaders ? toStringDict(rule.injectHeaders) : undefined,
-      injectQuery: rule.injectQuery ? toStringDict(rule.injectQuery) : undefined
-    });
+    const normalized: InjectionRule = { hostPattern: rule.hostPattern };
+    const injectHeaders = rule.injectHeaders ? toStringDict(rule.injectHeaders) : undefined;
+    if (injectHeaders && Object.keys(injectHeaders).length) normalized.injectHeaders = injectHeaders;
+    const injectQuery = rule.injectQuery ? toStringDict(rule.injectQuery) : undefined;
+    if (injectQuery && Object.keys(injectQuery).length) normalized.injectQuery = injectQuery;
+    rules.push(normalized);
   }
   return rules;
 }

@@ -34,14 +34,16 @@ export function initKeyboardShortcuts(): void {
       }
 
       const newLog = sortedLogs[newIndex];
+      if (!newLog) return;
       state.selectedLogId = newLog.id;
       renderDetails(newLog);
 
       document.querySelectorAll(".item.active").forEach((el) => el.classList.remove("active"));
       const items = document.querySelectorAll("#logsList .item");
-      if (items[newIndex]) {
-        items[newIndex].classList.add("active");
-        (items[newIndex] as HTMLElement).scrollIntoView({ block: "nearest" });
+      const activeItem = items[newIndex] as HTMLElement | undefined;
+      if (activeItem) {
+        activeItem.classList.add("active");
+        activeItem.scrollIntoView({ block: "nearest" });
       }
 
       const detailPane = document.getElementById("detailPane");

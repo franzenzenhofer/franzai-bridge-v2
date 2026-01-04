@@ -2,6 +2,8 @@ import type { LogEntry } from "../../shared/types";
 import { fmtTs } from "../utils/format";
 import { highlightJson } from "../utils/html";
 import { copyToClipboard } from "../ui/clipboard";
+import { removeLog } from "../data/settings";
+import { state } from "../state";
 
 function createSection(title: string, content: string, id: string, useHighlight = true): HTMLElement {
   const section = document.createElement("div");
@@ -24,6 +26,9 @@ function createSection(title: string, content: string, id: string, useHighlight 
 
   header.appendChild(titleEl);
   header.appendChild(copyBtn);
+  header.onclick = () => {
+    section.classList.toggle("collapsed");
+  };
 
   const pre = document.createElement("pre");
   pre.id = id;
@@ -50,6 +55,22 @@ export function renderDetails(log: LogEntry): void {
   copyUrlBtn.className = "copy-url-btn";
   copyUrlBtn.textContent = "Copy URL";
   copyUrlBtn.onclick = () => copyToClipboard(log.url, copyUrlBtn);
+
+  const copyCurlBtn = document.createElement("button");
+  copyCurlBtn.className = "copy-url-btn";
+  copyCurlBtn.textContent = "Copy cURL";
+  copyCurlBtn.onclick = () => copyToClipboard(buildCurlCommand(log), copyCurlBtn);
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.className = "copy-url-btn";
+  deleteBtn.textContent = "Delete";
+  deleteBtn.onclick = async () => {
+    await removeLog(log.id);
+    state.logs = state.logs.filter((entry) => entry.id !== log.id);
+    state.selectedLogId = null;
+    const { renderLogs } = await import("./render");
+    renderLogs();
+  };
 
   const copyAllBtn = document.createElement("button");
   copyAllBtn.className = "copy-all-btn";
@@ -90,7 +111,9 @@ export function renderDetails(log: LogEntry): void {
   const left = document.createElement("div");
   left.className = "detail-top-bar-left";
   left.appendChild(copyUrlBtn);
+  left.appendChild(copyCurlBtn);
   left.appendChild(copyAllBtn);
+  left.appendChild(deleteBtn);
 
   topBar.appendChild(left);
   topBar.appendChild(closeBtn);
@@ -123,4 +146,23 @@ export function renderDetails(log: LogEntry): void {
     pageOrigin: log.pageOrigin
   }, null, 2);
   details.appendChild(createSection("Meta", metaData, "meta"));
+}
+
+function buildCurlCommand(log: LogEntry): string {
+  const parts: string[] = [];
+  parts.push(`curl -X ${log.method} '${escapeShell(log.url)}'`);
+
+  for (const [key, value] of Object.entries(log.requestHeaders ?? {})) {
+    parts.push(`-H '${escapeShell(`${key}: ${value}`)}'`);
+  }
+
+  if (log.requestBodyPreview) {
+    parts.push(`--data '${escapeShell(log.requestBodyPreview)}'`);
+  }
+
+  return parts.join(" \\\n  ");
+}
+
+function escapeShell(value: string): string {
+  return value.replace(/'/g, "'\\''");
 }

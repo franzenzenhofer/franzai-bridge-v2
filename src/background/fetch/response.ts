@@ -40,9 +40,11 @@ export async function readResponse(args: {
     statusText: res.statusText,
     headers: headersObj,
     bodyText,
-    bodyBytes,
     elapsedMs
   };
+  if (bodyBytes) {
+    response.bodyBytes = bodyBytes;
+  }
 
   return {
     response,

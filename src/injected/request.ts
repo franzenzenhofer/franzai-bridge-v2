@@ -1,4 +1,5 @@
 import type { BridgeInit, LiteRequest } from "./types";
+import type { FetchInitLite } from "../shared/types";
 import { bodyToPayload, readRequestBody } from "./body";
 
 function resolveUrl(input: RequestInfo | URL): string {
@@ -25,23 +26,24 @@ export async function requestToLite(input: RequestInfo | URL, init?: BridgeInit)
     const headers = new Headers(init?.headers);
     const bodyPayload = init?.body != null ? await bodyToPayload(init.body, headers) : undefined;
 
-    return {
-      url: resolveUrl(input),
-      init: {
-        method: init?.method,
-        headers: headersToLite(headers),
-        body: bodyPayload,
-        franzai: init?.franzai,
-        redirect: init?.redirect,
-        credentials: init?.credentials,
-        cache: init?.cache,
-        referrer: init?.referrer,
-        referrerPolicy: init?.referrerPolicy,
-        integrity: init?.integrity,
-        keepalive: init?.keepalive
-      },
-      signal: baseSignal ?? undefined
-    };
+    const initPayload: FetchInitLite = {};
+    if (init?.method !== undefined) initPayload.method = init.method;
+    const headersLite = headersToLite(headers);
+    if (headersLite) initPayload.headers = headersLite;
+    if (bodyPayload !== undefined) initPayload.body = bodyPayload;
+    if (init?.franzai !== undefined) initPayload.franzai = init.franzai;
+    if (init?.redirect !== undefined) initPayload.redirect = init.redirect;
+    if (init?.credentials !== undefined) initPayload.credentials = init.credentials;
+    if (init?.cache !== undefined) initPayload.cache = init.cache;
+    if (init?.referrer !== undefined) initPayload.referrer = init.referrer;
+    if (init?.referrerPolicy !== undefined) initPayload.referrerPolicy = init.referrerPolicy;
+    if (init?.integrity !== undefined) initPayload.integrity = init.integrity;
+    if (init?.keepalive !== undefined) initPayload.keepalive = init.keepalive;
+
+    const lite: LiteRequest = { url: resolveUrl(input) };
+    if (Object.keys(initPayload).length) lite.init = initPayload;
+    if (baseSignal) lite.signal = baseSignal;
+    return lite;
   }
 
   const req = input as Request;
@@ -52,21 +54,22 @@ export async function requestToLite(input: RequestInfo | URL, init?: BridgeInit)
       ? await bodyToPayload(init.body, headers)
       : await readRequestBody(req, headers);
 
-    return {
-      url: resolveUrl(req.url),
-      init: {
-        method: init?.method ?? req.method,
-        headers: headersToLite(headers),
-        body: bodyPayload,
-        franzai: init?.franzai,
-        redirect: init?.redirect ?? req.redirect,
-        credentials: init?.credentials ?? req.credentials,
-        cache: init?.cache ?? req.cache,
-        referrer: init?.referrer ?? req.referrer,
-      referrerPolicy: init?.referrerPolicy ?? req.referrerPolicy,
-      integrity: init?.integrity ?? req.integrity,
-      keepalive: init?.keepalive ?? req.keepalive
-    },
-    signal: baseSignal ?? req.signal
-  };
+  const initPayload: FetchInitLite = {};
+  initPayload.method = init?.method ?? req.method;
+  const headersLite = headersToLite(headers);
+  if (headersLite) initPayload.headers = headersLite;
+  if (bodyPayload !== undefined) initPayload.body = bodyPayload;
+  if (init?.franzai !== undefined) initPayload.franzai = init.franzai;
+  if (init?.redirect !== undefined) initPayload.redirect = init.redirect;
+  if (init?.credentials !== undefined) initPayload.credentials = init.credentials;
+  if (init?.cache !== undefined) initPayload.cache = init.cache;
+  if (init?.referrer !== undefined) initPayload.referrer = init.referrer;
+  if (init?.referrerPolicy !== undefined) initPayload.referrerPolicy = init.referrerPolicy;
+  if (init?.integrity !== undefined) initPayload.integrity = init.integrity;
+  if (init?.keepalive !== undefined) initPayload.keepalive = init.keepalive;
+
+  const lite: LiteRequest = { url: resolveUrl(req.url), init: initPayload };
+  const signal = baseSignal ?? req.signal;
+  if (signal) lite.signal = signal;
+  return lite;
 }

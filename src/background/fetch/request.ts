@@ -31,16 +31,23 @@ export function buildRequestContext(
     id: makeId("log"),
     requestId: payload.requestId,
     ts: Date.now(),
-    tabId,
     pageOrigin: payload.pageOrigin,
     url: payload.url,
     method,
     requestHeaders,
     requestBodyPreview: previewBody(init.body, REQUEST_BODY_PREVIEW_LIMIT)
   };
+  if (tabId !== undefined) {
+    logEntry.tabId = tabId;
+  }
 
   if (!payload.pageOrigin) {
-    return { ok: false, statusText: "Blocked", message: "Blocked: no page origin provided.", logEntry };
+    return {
+      ok: false,
+      statusText: "Blocked",
+      message: "Blocked: no page origin provided. Add this origin to Allowed Origins in settings.",
+      logEntry
+    };
   }
 
   let url: URL;
@@ -56,7 +63,7 @@ export function buildRequestContext(
     return {
       ok: false,
       statusText: "Blocked",
-      message: `Blocked: destination not allowed (${url.hostname}).`,
+      message: `Blocked: destination not allowed (${url.hostname}). Add it to Allowed Destinations in settings.`,
       logEntry
     };
   }
@@ -75,16 +82,16 @@ export function buildRequestContext(
 
   const fetchInit: RequestInit = {
     method,
-    headers: requestHeaders,
-    body: fetchBody,
-    redirect: init.redirect,
-    credentials: init.credentials,
-    cache: init.cache,
-    referrer: init.referrer,
-    referrerPolicy: init.referrerPolicy,
-    integrity: init.integrity,
-    keepalive: init.keepalive
+    headers: requestHeaders
   };
+  if (fetchBody !== undefined) fetchInit.body = fetchBody;
+  if (init.redirect !== undefined) fetchInit.redirect = init.redirect;
+  if (init.credentials !== undefined) fetchInit.credentials = init.credentials;
+  if (init.cache !== undefined) fetchInit.cache = init.cache;
+  if (init.referrer !== undefined) fetchInit.referrer = init.referrer;
+  if (init.referrerPolicy !== undefined) fetchInit.referrerPolicy = init.referrerPolicy;
+  if (init.integrity !== undefined) fetchInit.integrity = init.integrity;
+  if (init.keepalive !== undefined) fetchInit.keepalive = init.keepalive;
 
   return { ok: true, ctx: { url, method, requestHeaders, fetchInit, logEntry } };
 }

@@ -4,8 +4,10 @@ export type BridgeWindow = Window & {
   __franzaiBridgeInstalled?: boolean;
   __franzaiNativeFetch?: typeof fetch;
   __franzaiNativeRequest?: typeof Request;
+  __franzaiNativeWebSocket?: typeof WebSocket;
   __franzaiNativeFetchDescriptor?: PropertyDescriptor | null;
   __franzaiNativeRequestDescriptor?: PropertyDescriptor | null;
+  __franzaiNativeWebSocketDescriptor?: PropertyDescriptor | null;
   __franzaiBridgeConfig?: BridgeConfig;
   franzai?: FranzAIBridge;
 };

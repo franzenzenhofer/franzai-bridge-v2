@@ -62,6 +62,14 @@ html, body {
   background: var(--dot-active);
 }
 
+.key-dot.warning {
+  background: var(--dot-warning);
+}
+
+.key-dot.error {
+  background: var(--error);
+}
+
 /* Workbench - 2-pane layout */
 .workbench {
   display: flex;
@@ -157,4 +165,28 @@ html, body {
 
 .install-btn:hover {
   background: #1557b0;
+}
+
+@media (max-width: 768px) {
+  .workbench {
+    flex-direction: column;
+    height: calc(100vh - var(--status-bar-height) - var(--console-height));
+  }
+
+  .chat-pane {
+    width: 100%;
+    height: 40%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .editor-pane {
+    height: 60%;
+  }
+
+  .resize-handle {
+    width: 100%;
+    height: 6px;
+    cursor: row-resize;
+  }
 }

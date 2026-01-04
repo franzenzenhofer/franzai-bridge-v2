@@ -15,7 +15,7 @@ export interface EditorState {
   };
 
   // Editor - Single HTML file
-  view: "preview" | "code";
+  view: "preview" | "code" | "request";
   code: string;
   previousCode: string;
 
@@ -35,6 +35,28 @@ export interface EditorState {
   projectName: string;
   isDirty: boolean;
   lastSnapshot: string | null;
+  contextFiles: ContextFile[];
+
+  // API Request/Response (for debugging)
+  lastRequest: ApiRequest | null;
+  lastResponse: ApiResponse | null;
+}
+
+export interface ApiRequest {
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  body: unknown;
+  timestamp: number;
+}
+
+export interface ApiResponse {
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+  body: unknown;
+  duration: number;
+  error?: string;
 }
 
 export interface HistoryEntry {
@@ -49,12 +71,30 @@ export interface ChatMessage {
   content: string;
   timestamp: number;
   hasCode?: boolean;
+  code?: string;
+  changes?: string[];
+  isStreaming?: boolean;
+  isError?: boolean;
+}
+
+/** Structured response from AI - all providers normalize to this */
+export interface AIResponse {
+  explanation: string;
+  code: string;
+  changes?: string[];
 }
 
 export interface ConsoleLog {
   type: "log" | "warn" | "error" | "info";
   message: string;
   timestamp: number;
+}
+
+export interface ContextFile {
+  id: string;
+  name: string;
+  content: string;
+  updatedAt: number;
 }
 
 export type StateKey = keyof EditorState;

@@ -83,6 +83,12 @@ export async function clearLogs(): Promise<void> {
   await store.remove(LOGS_KEY);
 }
 
+export async function removeLog(logId: string): Promise<void> {
+  const logs = await getLogs();
+  const nextLogs = logs.filter((log) => log.id !== logId);
+  await setLogs(nextLogs);
+}
+
 // =============================================================================
 // Domain Preferences Storage
 // =============================================================================

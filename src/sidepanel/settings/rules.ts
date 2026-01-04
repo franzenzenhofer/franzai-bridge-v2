@@ -87,7 +87,9 @@ export function initRules(): void {
       return;
     }
 
-    const rule: InjectionRule = { hostPattern, injectHeaders, injectQuery };
+    const rule: InjectionRule = { hostPattern };
+    if (injectHeaders && Object.keys(injectHeaders).length) rule.injectHeaders = injectHeaders;
+    if (injectQuery && Object.keys(injectQuery).length) rule.injectQuery = injectQuery;
     const next = structuredClone(state.settings);
     next.injectionRules.push(rule);
 

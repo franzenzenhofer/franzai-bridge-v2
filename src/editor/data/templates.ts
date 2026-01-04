@@ -109,3 +109,11 @@ export const TEMPLATES: Template[] = [
 </html>`
   }
 ];
+
+export const SUGGESTIONS: string[] = [
+  "Build a sleek ToDo app with tags and filters.",
+  "Create a weather dashboard with a 5-day forecast.",
+  "Design a pricing page for a SaaS product.",
+  "Make a habit tracker with streaks and charts.",
+  "Build a minimal portfolio landing page."
+];

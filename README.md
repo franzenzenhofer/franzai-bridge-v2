@@ -175,6 +175,33 @@ const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
 });
 ```
 
+### Replicate
+```javascript
+const response = await fetch("https://api.replicate.com/v1/predictions", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": "Token YOUR_REPLICATE_API_TOKEN"
+  },
+  body: JSON.stringify({
+    version: "model-version-id",
+    input: { prompt: "Generate a scenic photo of mountains" }
+  })
+});
+```
+
+### Hugging Face Inference
+```javascript
+const response = await fetch("https://api-inference.huggingface.co/models/gpt2", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer YOUR_HF_API_TOKEN"
+  },
+  body: JSON.stringify({ inputs: "Once upon a time" })
+});
+```
+
 ---
 
 ## Configuration

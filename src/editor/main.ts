@@ -7,8 +7,11 @@ import { initEditorPane } from "./components/editor-pane";
 import { initConsolePane } from "./components/console-pane";
 import { initChatPane } from "./components/chat-pane";
 import { initResizeHandle } from "./services/resize";
+import { hydrateFromLocalStorage } from "./state/store";
 
 async function init(): Promise<void> {
+  hydrateFromLocalStorage();
+
   // Check extension first
   await checkExtension();
 

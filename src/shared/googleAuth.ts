@@ -175,18 +175,18 @@ export async function googleFetch(
   }
 
   try {
-    const response = await fetch(url, {
-      method: init?.method,
-      headers,
-      body,
-      redirect: init?.redirect,
-      credentials: init?.credentials,
-      cache: init?.cache,
-      referrer: init?.referrer,
-      referrerPolicy: init?.referrerPolicy,
-      integrity: init?.integrity,
-      keepalive: init?.keepalive
-    });
+    const requestInit: RequestInit = { headers };
+    if (init?.method !== undefined) requestInit.method = init.method;
+    if (body !== undefined) requestInit.body = body;
+    if (init?.redirect !== undefined) requestInit.redirect = init.redirect;
+    if (init?.credentials !== undefined) requestInit.credentials = init.credentials;
+    if (init?.cache !== undefined) requestInit.cache = init.cache;
+    if (init?.referrer !== undefined) requestInit.referrer = init.referrer;
+    if (init?.referrerPolicy !== undefined) requestInit.referrerPolicy = init.referrerPolicy;
+    if (init?.integrity !== undefined) requestInit.integrity = init.integrity;
+    if (init?.keepalive !== undefined) requestInit.keepalive = init.keepalive;
+
+    const response = await fetch(url, requestInit);
     const contentType = response.headers.get("content-type");
     let bodyText = "";
     let bodyBytes: Uint8Array | undefined;
@@ -197,7 +197,17 @@ export async function googleFetch(
     }
     const responseHeaders: Dict<string> = {};
     response.headers.forEach((v, k) => { responseHeaders[k] = v; });
-    return { ok: response.ok, status: response.status, statusText: response.statusText, headers: responseHeaders, bodyText, bodyBytes };
+    const result = {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+      bodyText
+    };
+    if (bodyBytes) {
+      return { ...result, bodyBytes };
+    }
+    return result;
   } catch (err) {
     return { ok: false, status: 0, statusText: "Network Error", headers: {}, bodyText: "", error: String(err) };
   }

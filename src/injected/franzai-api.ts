@@ -6,7 +6,7 @@ import { createBridgeFetch } from "./bridge-fetch";
 import { createGoogleApi } from "./google/api";
 import { normalizeMode } from "./config";
 import { ensureDomainStatus } from "./domain-status";
-import type { BridgeConfig, BridgeInit, FranzAIBridge } from "./types";
+import type { BridgeConfig, BridgeInit, FranzAIBridge, RequestInterceptor, ResponseHandler } from "./types";
 import type { LiteRequest } from "./types";
 
 export type FranzaiDeps = {
@@ -20,6 +20,9 @@ export function createFranzaiBridge(deps: FranzaiDeps): FranzAIBridge {
     ensureDomainEnabled: deps.ensureDomainEnabled,
     requestToLite: deps.requestToLite
   });
+
+  const requestInterceptors: RequestInterceptor[] = [];
+  const responseHandlers: ResponseHandler[] = [];
 
   const franzai: FranzAIBridge = {
     version: BRIDGE_VERSION,
@@ -78,7 +81,36 @@ export function createFranzaiBridge(deps: FranzaiDeps): FranzAIBridge {
       return ensureDomainStatus();
     },
 
-    fetch: bridgeFetch,
+    async fetch(input: RequestInfo | URL, init?: BridgeInit): Promise<Response> {
+      let currentInput: RequestInfo | URL = input;
+      let currentInit: BridgeInit | undefined = init;
+
+      for (const interceptor of requestInterceptors) {
+        const result = interceptor(currentInput, currentInit);
+        if (result?.input) currentInput = result.input;
+        if (result?.init) currentInit = result.init;
+      }
+
+      let response = await bridgeFetch(currentInput, currentInit);
+      for (const handler of responseHandlers) {
+        response = await handler(response);
+      }
+      return response;
+    },
+    addInterceptor(fn: RequestInterceptor): () => void {
+      requestInterceptors.push(fn);
+      return () => {
+        const idx = requestInterceptors.indexOf(fn);
+        if (idx >= 0) requestInterceptors.splice(idx, 1);
+      };
+    },
+    addResponseHandler(fn: ResponseHandler): () => void {
+      responseHandlers.push(fn);
+      return () => {
+        const idx = responseHandlers.indexOf(fn);
+        if (idx >= 0) responseHandlers.splice(idx, 1);
+      };
+    },
     google: createGoogleApi(deps.ensureDomainEnabled)
   };
 

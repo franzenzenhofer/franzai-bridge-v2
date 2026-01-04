@@ -9,10 +9,13 @@ export type HookManager = {
 type HookArgs = {
   nativeFetch: typeof fetch;
   nativeRequest: typeof Request;
+  nativeWebSocket: typeof WebSocket;
   nativeFetchDescriptor: PropertyDescriptor | null;
   nativeRequestDescriptor: PropertyDescriptor | null;
+  nativeWebSocketDescriptor: PropertyDescriptor | null;
   bridgeConfig: BridgeConfig;
   hookedFetch: typeof fetch;
+  hookedWebSocket: typeof WebSocket;
   hookState: { installed: boolean };
   setRequestMode: (request: Request, mode?: BridgeMode) => void;
   modeFromInit: (init?: RequestInit) => BridgeMode | undefined;
@@ -55,6 +58,27 @@ function restoreNativeRequest(nativeRequest: typeof Request, originalDescriptor:
   }
   try {
     window.Request = nativeRequest;
+  } catch {
+    // Ignore restore failures.
+  }
+}
+
+function restoreNativeWebSocket(nativeWebSocket: typeof WebSocket, originalDescriptor: PropertyDescriptor | null) {
+  if (originalDescriptor) {
+    try {
+      Object.defineProperty(window, "WebSocket", originalDescriptor);
+      return;
+    } catch {
+      // Fall back to assignment/delete below.
+    }
+  }
+  try {
+    delete (window as { WebSocket?: typeof WebSocket }).WebSocket;
+  } catch {
+    // Ignore delete errors; fall back to assignment.
+  }
+  try {
+    window.WebSocket = nativeWebSocket;
   } catch {
     // Ignore restore failures.
   }
@@ -110,6 +134,21 @@ function installRequestHook(nativeRequest: typeof Request, setRequestMode: HookA
   }
 }
 
+function installWebSocketHook(hookedWebSocket: typeof WebSocket, bridgeConfig: BridgeConfig) {
+  const hookDescriptor: PropertyDescriptor = {
+    value: hookedWebSocket,
+    enumerable: true,
+    writable: !bridgeConfig.lockHooks,
+    configurable: true
+  };
+
+  try {
+    Object.defineProperty(window, "WebSocket", hookDescriptor);
+  } catch {
+    window.WebSocket = hookedWebSocket;
+  }
+}
+
 export function createHookManager(args: HookArgs): HookManager {
   const hookState = args.hookState;
 
@@ -117,6 +156,7 @@ export function createHookManager(args: HookArgs): HookManager {
     if (hookState.installed) return;
     installRequestHook(args.nativeRequest, args.setRequestMode, args.modeFromInit);
     installFetchHook(args.hookedFetch, args.bridgeConfig);
+    installWebSocketHook(args.hookedWebSocket, args.bridgeConfig);
     hookState.installed = true;
     args.onBridgeReady();
   };
@@ -126,6 +166,7 @@ export function createHookManager(args: HookArgs): HookManager {
     hookState.installed = false;
     restoreNativeRequest(args.nativeRequest, args.nativeRequestDescriptor);
     restoreNativeFetch(args.nativeFetch, args.nativeFetchDescriptor);
+    restoreNativeWebSocket(args.nativeWebSocket, args.nativeWebSocketDescriptor);
     const w = window as unknown as { __franzaiRequestHookInstalled?: boolean };
     w.__franzaiRequestHookInstalled = false;
   };
