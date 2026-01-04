@@ -65,12 +65,16 @@ export function isBridgeEnabled(status: BridgeStatus | null): boolean {
   return status?.domainEnabled === true;
 }
 
-export async function sendInitialDomainStatus(): Promise<void> {
-  const domain = window.location.hostname;
-  const status = await fetchDomainStatus(domain);
+export function sendDomainEnabledUpdate(enabled: boolean, source: string): void {
   window.postMessage({
     source: BRIDGE_SOURCE,
     type: PAGE_MSG.DOMAIN_ENABLED_UPDATE,
-    payload: { enabled: status.domainEnabled, source: status.domainSource }
+    payload: { enabled, source }
   }, "*");
+}
+
+export async function sendInitialDomainStatus(): Promise<void> {
+  const domain = window.location.hostname;
+  const status = await fetchDomainStatus(domain);
+  sendDomainEnabledUpdate(status.domainEnabled, status.domainSource);
 }

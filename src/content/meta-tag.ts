@@ -11,30 +11,35 @@ function detectMetaTag(): boolean {
   return content === "enabled" || content === "enabled-by-default" || content === "true";
 }
 
-async function reportMetaTag(): Promise<void> {
+async function reportMetaTag(): Promise<boolean> {
   const domain = window.location.hostname;
   const enabled = detectMetaTag();
 
-  if (!enabled) return;
+  if (!enabled) return false;
   log.info("Meta tag detected, reporting to background:", domain);
   try {
-    await sendRuntimeMessage({
+    const resp = await sendRuntimeMessage<
+      { type: typeof BG_MSG.REPORT_META_TAG; payload: { domain: string; enabled: boolean } },
+      { ok: boolean }
+    >({
       type: BG_MSG.REPORT_META_TAG,
       payload: { domain, enabled: true }
     });
+    return resp.ok;
   } catch (e) {
     log.warn("Failed to report meta tag", e);
+    return false;
   }
 }
 
-export async function initMetaTagReporting(): Promise<void> {
+export async function initMetaTagReporting(): Promise<boolean> {
   if (document.readyState === "loading") {
-    await new Promise<void>((resolve) => {
+    return new Promise<boolean>((resolve) => {
       document.addEventListener("DOMContentLoaded", () => {
-        reportMetaTag().finally(resolve);
+        reportMetaTag().then(resolve).catch(() => resolve(false));
       });
     });
   } else {
-    await reportMetaTag();
+    return reportMetaTag();
   }
 }
