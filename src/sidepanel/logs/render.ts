@@ -39,7 +39,7 @@ export function renderLogs(): void {
   if (!state.logs.length) {
     const hint = document.createElement("div");
     hint.className = "hint";
-    hint.textContent = "No requests captured yet. Make fetch calls to see them here.";
+    hint.textContent = "No requests captured yet. Make fetch calls to see them here. If AI replies but this list stays empty, reload the extension, hard-refresh the tab, and ensure only one FranzAI Bridge extension is enabled.";
     logsList.appendChild(hint);
     if (detailPane) detailPane.classList.remove("visible");
     updateFilterUI(0, 0);
