@@ -10,8 +10,8 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ICONS_DIR = path.join(__dirname, "../src/icons");
 
-// Gemini API key
-const API_KEY = "AIzaSyAR2GDAk8HoZ9egcN14tFBWNUZSfGnzZTs";
+// Gemini API key - set via GOOGLE_API_KEY env var
+const API_KEY = process.env.GOOGLE_API_KEY ?? "";
 
 const ICON_SIZES = [16, 32, 48, 128];
 
