@@ -91,6 +91,7 @@ async function handleStreamStart(payload: StreamStartPayload, port: chrome.runti
   logEntry.statusText = "Streaming...";
   await appendLog(logEntry, settings.maxLogs);
   broadcast({ type: BG_EVT.LOGS_UPDATED });
+  log.info("Stream session ready", { requestId: payload.requestId, elapsed: Date.now() - started });
 
   let headerTimeout: number | null = null;
   let inactivityTimeout: number | null = null;
@@ -102,12 +103,17 @@ async function handleStreamStart(payload: StreamStartPayload, port: chrome.runti
     }, timeoutMs) as unknown as number;
   };
 
+  let fetchStarted = false;
   headerTimeout = setTimeout(() => {
-    controller.abort(new DOMException(`Stream header timeout (${STREAM_HEADER_TIMEOUT_MS}ms)`, "AbortError"));
+    log.warn("Header timeout fired", { fetchStarted, requestId: payload.requestId, elapsed: Date.now() - started });
+    controller.abort(new DOMException(`Stream header timeout (${STREAM_HEADER_TIMEOUT_MS}ms) fetchStarted=${fetchStarted}`, "AbortError"));
   }, STREAM_HEADER_TIMEOUT_MS) as unknown as number;
 
   try {
+    log.info("Stream fetch starting", { url: url.toString(), method: fetchInit.method, bodyLen: typeof fetchInit.body === "string" ? fetchInit.body.length : "n/a" });
+    fetchStarted = true;
     const res = await fetch(url.toString(), { ...fetchInit, signal: controller.signal });
+    log.info("Stream fetch resolved", { status: res.status, requestId: payload.requestId, elapsed: Date.now() - started });
     if (headerTimeout) clearTimeout(headerTimeout);
 
     const headersObj: Record<string, string> = {};
@@ -180,6 +186,7 @@ async function handleStreamStart(payload: StreamStartPayload, port: chrome.runti
     broadcast({ type: BG_EVT.LOGS_UPDATED });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
+    log.error("Stream fetch error", { message, fetchStarted, elapsed: Date.now() - started, name: e instanceof Error ? e.name : "unknown" });
     logEntry.error = message;
     logEntry.statusText = "Stream Error";
     logEntry.elapsedMs = Date.now() - started;
