@@ -4,6 +4,7 @@ import { BRIDGE_SOURCE } from "../../shared/constants";
 import { createLogger } from "../../shared/logger";
 import { sendRuntimeMessage } from "../../shared/runtime";
 import { fetchDomainStatus, getDomainStatusCache, isBridgeEnabled } from "../domain-status";
+import { resolveCurrentDomain } from "../domain";
 
 const log = createLogger("content-google");
 const BRIDGE_DISABLED_MESSAGE =
@@ -106,7 +107,11 @@ export async function handleGoogleHasScopes(scopesId: string, scopes: string[]):
 }
 
 export async function handleGoogleFetch(req: GoogleFetchRequest): Promise<void> {
-  const domain = window.location.hostname;
+  const domain = resolveCurrentDomain();
+  if (!domain) {
+    sendBlockedGoogleFetchResponse(req.requestId, "Bridge domain resolution failed for this frame.");
+    return;
+  }
   const status = getDomainStatusCache() ?? await fetchDomainStatus(domain);
   if (!isBridgeEnabled(status)) {
     log.info("Blocked Google fetch: bridge disabled for domain", domain);

@@ -3,6 +3,7 @@ import { BG_MSG, PAGE_MSG } from "../shared/messages";
 import { BRIDGE_SOURCE } from "../shared/constants";
 import { createLogger } from "../shared/logger";
 import { sendRuntimeMessage } from "../shared/runtime";
+import { resolveCurrentDomain } from "./domain";
 
 const log = createLogger("content-status");
 
@@ -74,7 +75,11 @@ export function sendDomainEnabledUpdate(enabled: boolean, source: string): void 
 }
 
 export async function sendInitialDomainStatus(): Promise<void> {
-  const domain = window.location.hostname;
+  const domain = resolveCurrentDomain();
+  if (!domain) {
+    sendDomainEnabledUpdate(false, "default");
+    return;
+  }
   const status = await fetchDomainStatus(domain);
   sendDomainEnabledUpdate(status.domainEnabled, status.domainSource);
 }

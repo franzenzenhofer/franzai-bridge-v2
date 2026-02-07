@@ -3,11 +3,13 @@ import { BRIDGE_SOURCE } from "../shared/constants";
 import { createLogger } from "../shared/logger";
 import { sendRuntimeMessage } from "../shared/runtime";
 import { fetchDomainStatus } from "./domain-status";
+import { resolveCurrentDomain } from "./domain";
 
 const log = createLogger("content-port");
 
 async function handleDomainPrefsUpdate(): Promise<void> {
-  const domain = window.location.hostname;
+  const domain = resolveCurrentDomain();
+  if (!domain) return;
   try {
     const status = await fetchDomainStatus(domain);
     log.info("Domain status updated, notifying page:", status.domainEnabled);

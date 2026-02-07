@@ -342,7 +342,7 @@ html, body {
 /* Network table header - compact for sidebar */
 .table-header {
   display: grid;
-  grid-template-columns: 50px 45px 90px 1fr 45px 40px;
+  grid-template-columns: 50px 45px 90px 1fr 56px 52px;
   background: var(--panel);
   border-bottom: 1px solid var(--border);
   font-size: 10px;
@@ -820,10 +820,12 @@ textarea.error {
 
 .item {
   display: grid;
-  grid-template-columns: 50px 45px 90px 1fr 45px 40px;
+  grid-template-columns: 50px 45px 90px 1fr 56px 52px;
   border-bottom: 1px solid var(--border);
+  border-left: 2px solid transparent;
   cursor: pointer;
   align-items: center;
+  transition: background-color 0.18s ease;
 }
 
 .item:hover {
@@ -832,7 +834,7 @@ textarea.error {
 
 .item.active {
   background: var(--row-selected);
-  border-left: 2px solid var(--accent);
+  border-left-color: var(--accent);
 }
 
 .item > div {
@@ -863,12 +865,40 @@ textarea.error {
 }
 
 .item .status-code {
-  font-weight: 500;
+  font-weight: 600;
+  text-align: center;
+  justify-self: center;
+  min-width: 40px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 1px 6px;
+  line-height: 1.4;
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
 }
 
-.item .status-code.success { color: var(--success); }
-.item .status-code.error { color: var(--error); }
-.item .status-code.redirect { color: var(--warning); }
+.item .status-code.pending {
+  color: var(--accent);
+  border-color: rgba(26, 115, 232, 0.35);
+  background: rgba(26, 115, 232, 0.1);
+}
+
+.item .status-code.success {
+  color: var(--success);
+  border-color: rgba(24, 128, 56, 0.35);
+  background: rgba(24, 128, 56, 0.08);
+}
+
+.item .status-code.error {
+  color: var(--error);
+  border-color: rgba(217, 48, 37, 0.35);
+  background: rgba(217, 48, 37, 0.08);
+}
+
+.item .status-code.redirect {
+  color: var(--warning);
+  border-color: rgba(227, 116, 0, 0.35);
+  background: rgba(227, 116, 0, 0.08);
+}
 
 .item .ts {
   color: var(--muted);
@@ -878,6 +908,73 @@ textarea.error {
 .item .elapsed {
   color: var(--muted);
   text-align: right;
+}
+
+.item.in-flight:not(.active) {
+  border-left-color: rgba(26, 115, 232, 0.2);
+}
+
+.item.in-flight .elapsed {
+  color: var(--accent);
+}
+
+.item.in-flight .status-code.pending {
+  animation: status-pulse 1.2s ease-in-out infinite;
+}
+
+.item.is-new {
+  animation: row-slide-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.item.stage-changed .status-code {
+  animation: status-bump 0.26s ease-out;
+}
+
+@keyframes row-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(26, 115, 232, 0.22);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 4px rgba(26, 115, 232, 0);
+  }
+}
+
+@keyframes status-bump {
+  0% {
+    transform: scale(0.92);
+  }
+  70% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item {
+    transition: none;
+  }
+
+  .item.in-flight .status-code.pending,
+  .item.is-new,
+  .item.stage-changed .status-code {
+    animation: none;
+  }
 }
 
 /* Legacy item format support */
@@ -1146,7 +1243,7 @@ button:active {
 /* Responsive - even more compact for narrow sidebars */
 @media (max-width: 400px) {
   .item {
-    grid-template-columns: 45px 40px 1fr 40px;
+    grid-template-columns: 45px 40px 1fr 56px;
   }
 
   .item .host,
@@ -1155,7 +1252,7 @@ button:active {
   }
 
   .table-header {
-    grid-template-columns: 45px 40px 1fr 40px;
+    grid-template-columns: 45px 40px 1fr 56px;
   }
 
   .table-header > div:nth-child(3),

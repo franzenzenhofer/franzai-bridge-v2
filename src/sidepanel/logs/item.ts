@@ -1,22 +1,33 @@
 import type { LogEntry } from "../../shared/types";
 import { fmtShortTime, fmtTs } from "../utils/format";
+import {
+  deriveLogLifecycle,
+  getStatusDisplay,
+  getStatusTitle,
+  type LogLifecycle
+} from "./stage";
 
-function getStatusClass(status: number | undefined, error: string | undefined): string {
-  if (error) return "error";
-  if (!status) return "";
-  if (status >= 200 && status < 300) return "success";
-  if (status >= 300 && status < 400) return "redirect";
-  if (status >= 400) return "error";
-  return "";
-}
+type LogItemRenderState = {
+  lifecycle?: LogLifecycle;
+  isNew?: boolean;
+  didLifecycleChange?: boolean;
+};
 
-export function createLogItem(log: LogEntry, selectedLogId: string | null): HTMLDivElement {
+export function createLogItem(
+  log: LogEntry,
+  selectedLogId: string | null,
+  renderState: LogItemRenderState = {}
+): HTMLDivElement {
+  const lifecycle = renderState.lifecycle ?? deriveLogLifecycle(log);
   const div = document.createElement("div");
   div.className = "item" + (log.id === selectedLogId ? " active" : "");
+  if (lifecycle.inFlight) div.classList.add("in-flight");
+  if (renderState.isNew) div.classList.add("is-new");
+  if (renderState.didLifecycleChange) div.classList.add("stage-changed");
+  div.dataset.lifecycle = lifecycle.stage;
 
-  const status = log.error ? "ERR" : log.status ?? "...";
-  const statusClass = getStatusClass(log.status, log.error);
-  const ms = log.elapsedMs != null ? `${log.elapsedMs}` : "—";
+  const status = getStatusDisplay(log, lifecycle);
+  const ms = log.elapsedMs != null ? `${log.elapsedMs}` : lifecycle.inFlight ? "…" : "—";
 
   let host = "";
   let path = log.url;
@@ -53,8 +64,9 @@ export function createLogItem(log: LogEntry, selectedLogId: string | null): HTML
   div.appendChild(urlDiv);
 
   const statusDiv = document.createElement("div");
-  statusDiv.className = "status-code " + statusClass;
+  statusDiv.className = `status-code ${lifecycle.statusClass}`;
   statusDiv.textContent = String(status);
+  statusDiv.title = getStatusTitle(log, lifecycle);
   div.appendChild(statusDiv);
 
   const elapsedDiv = document.createElement("div");

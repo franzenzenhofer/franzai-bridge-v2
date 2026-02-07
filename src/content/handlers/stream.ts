@@ -4,6 +4,7 @@ import { STREAM_MSG, type StreamPortMessage, type StreamStartPayload } from "../
 import { BRIDGE_SOURCE, STREAM_PORT_NAME } from "../../shared/constants";
 import { createLogger } from "../../shared/logger";
 import { fetchDomainStatus, getDomainStatusCache, isBridgeEnabled } from "../domain-status";
+import { resolveCurrentDomain } from "../domain";
 
 const log = createLogger("content-stream");
 const BRIDGE_DISABLED_MESSAGE =
@@ -30,7 +31,11 @@ export async function handleStreamRequest(req: PageFetchRequest): Promise<void> 
     return;
   }
 
-  const domain = window.location.hostname;
+  const domain = resolveCurrentDomain();
+  if (!domain) {
+    postStreamMessage(PAGE_MSG.STREAM_ERROR, { requestId: req.requestId, message: "Bridge domain resolution failed for this frame." });
+    return;
+  }
   const status = getDomainStatusCache() ?? await fetchDomainStatus(domain);
   if (!isBridgeEnabled(status)) {
     postStreamMessage(PAGE_MSG.STREAM_ERROR, { requestId: req.requestId, message: BRIDGE_DISABLED_MESSAGE });

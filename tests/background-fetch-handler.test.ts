@@ -239,4 +239,40 @@ describe("handleFetch", () => {
     expect(result.response?.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("publishes receiving stage before final completion", async () => {
+    storageMocks.getSettings.mockResolvedValue(makeSettings({ allowedDestinations: ["api.openai.com"] }));
+
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        statusText: "OK",
+        headers: { "content-type": "application/json" }
+      })
+    ) as unknown as typeof fetch;
+
+    const broadcast = vi.fn();
+    const result = await handleFetch(
+      makePayload({
+        requestId: "req-stage",
+        init: { method: "GET" }
+      }),
+      1,
+      broadcast
+    );
+
+    expect(result.ok).toBe(true);
+    expect(storageMocks.appendLog).toHaveBeenCalledTimes(1);
+    expect(storageMocks.updateLog).toHaveBeenCalledTimes(2);
+
+    expect(storageMocks.updateLog.mock.calls[0]?.[1]).toMatchObject({
+      status: 200,
+      statusText: "Receiving response..."
+    });
+    expect(storageMocks.updateLog.mock.calls[1]?.[1]).toMatchObject({
+      status: 200,
+      statusText: "OK"
+    });
+    expect(broadcast).toHaveBeenCalledTimes(3);
+  });
 });

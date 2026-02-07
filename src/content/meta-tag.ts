@@ -1,6 +1,7 @@
 import { BG_MSG } from "../shared/messages";
 import { createLogger } from "../shared/logger";
 import { sendRuntimeMessage } from "../shared/runtime";
+import { resolveCurrentDomain } from "./domain";
 
 const log = createLogger("content-meta");
 
@@ -12,10 +13,10 @@ function detectMetaTag(): boolean {
 }
 
 async function reportMetaTag(): Promise<boolean> {
-  const domain = window.location.hostname;
+  const domain = resolveCurrentDomain();
   const enabled = detectMetaTag();
 
-  if (!enabled) return false;
+  if (!enabled || !domain) return false;
   log.info("Meta tag detected, reporting to background:", domain);
   try {
     const resp = await sendRuntimeMessage<

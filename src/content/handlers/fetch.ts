@@ -4,6 +4,7 @@ import { BRIDGE_SOURCE, BRIDGE_TIMEOUT_MS } from "../../shared/constants";
 import { createLogger } from "../../shared/logger";
 import { sendRuntimeMessage } from "../../shared/runtime";
 import { fetchDomainStatus, getDomainStatusCache, isBridgeEnabled } from "../domain-status";
+import { resolveCurrentDomain } from "../domain";
 
 const log = createLogger("content-fetch");
 const BRIDGE_DISABLED_MESSAGE =
@@ -49,7 +50,11 @@ export async function handleFetchRequest(req: PageFetchRequest): Promise<void> {
     return;
   }
 
-  const domain = window.location.hostname;
+  const domain = resolveCurrentDomain();
+  if (!domain) {
+    sendBlockedFetchResponse(req.requestId, "Bridge domain resolution failed for this frame.");
+    return;
+  }
   const status = getDomainStatusCache() ?? await fetchDomainStatus(domain);
   if (!isBridgeEnabled(status)) {
     log.info("Blocked fetch: bridge disabled for domain", domain);

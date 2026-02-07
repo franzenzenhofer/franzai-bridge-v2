@@ -77,6 +77,18 @@ export async function handleFetch(
 
   try {
     const res = await fetchWithRetry(url.toString(), fetchInit, controller.signal, retryOptions);
+
+    // Surface intermediate progress before body parsing completes.
+    logEntry.status = res.status;
+    logEntry.statusText = "Receiving response...";
+    logEntry.elapsedMs = Date.now() - started;
+    await updateLog(logEntry.id, {
+      status: logEntry.status,
+      statusText: logEntry.statusText,
+      elapsedMs: logEntry.elapsedMs
+    });
+    broadcast({ type: BG_EVT.LOGS_UPDATED });
+
     const readResult = await readResponse({ requestId: payload.requestId, res, started });
     if (readResult.eventStream) {
       log.warn("SSE stream detected; buffering full response (no progressive streaming yet).");

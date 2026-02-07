@@ -3,6 +3,7 @@ import { WS_MSG, type WebSocketPortMessage, type WebSocketOpenPayload, type WebS
 import { BRIDGE_SOURCE, WS_PORT_NAME } from "../../shared/constants";
 import { createLogger } from "../../shared/logger";
 import { fetchDomainStatus, getDomainStatusCache, isBridgeEnabled } from "../domain-status";
+import { resolveCurrentDomain } from "../domain";
 
 const log = createLogger("content-ws");
 let wsPort: chrome.runtime.Port | null = null;
@@ -35,7 +36,11 @@ function ensurePort(): chrome.runtime.Port {
 }
 
 export async function handleWebSocketConnect(payload: WebSocketOpenPayload): Promise<void> {
-  const domain = window.location.hostname;
+  const domain = resolveCurrentDomain();
+  if (!domain) {
+    postWsMessage(PAGE_MSG.WS_ERROR, { socketId: payload.socketId, message: "Bridge domain resolution failed for this frame." });
+    return;
+  }
   const status = getDomainStatusCache() ?? await fetchDomainStatus(domain);
   if (!isBridgeEnabled(status)) {
     postWsMessage(PAGE_MSG.WS_ERROR, { socketId: payload.socketId, message: "Bridge is disabled for this domain." });

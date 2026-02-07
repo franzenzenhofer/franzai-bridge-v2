@@ -6,6 +6,16 @@ import { updateSortIndicators } from "./sorting";
 import { getSortState } from "../ui/prefs";
 import { getVisibleLogs } from "./selectors";
 import { applyColumnWidths } from "../ui/resizable";
+import { deriveLogLifecycle, type LogLifecycleStage } from "./stage";
+
+const lifecycleByLogId = new Map<string, LogLifecycleStage>();
+
+function refreshLifecycleSnapshot(): void {
+  lifecycleByLogId.clear();
+  for (const log of state.logs) {
+    lifecycleByLogId.set(log.id, deriveLogLifecycle(log).stage);
+  }
+}
 
 export function closeDetailPane(): void {
   state.selectedLogId = null;
@@ -17,6 +27,7 @@ export function closeDetailPane(): void {
 export function renderLogs(): void {
   const logsList = document.getElementById("logsList");
   if (!logsList) return;
+  const previousLifecycleById = new Map(lifecycleByLogId);
   const detailPane = document.getElementById("detailPane");
   const prevScrollTop = logsList.scrollTop;
   const prevScrollHeight = logsList.scrollHeight;
@@ -32,6 +43,7 @@ export function renderLogs(): void {
     logsList.appendChild(hint);
     if (detailPane) detailPane.classList.remove("visible");
     updateFilterUI(0, 0);
+    refreshLifecycleSnapshot();
     return;
   }
 
@@ -45,6 +57,7 @@ export function renderLogs(): void {
     logsList.appendChild(hint);
     if (detailPane) detailPane.classList.remove("visible");
     updateFilterUI(0, 0);
+    refreshLifecycleSnapshot();
     return;
   }
 
@@ -63,6 +76,7 @@ export function renderLogs(): void {
       };
     }
     if (detailPane) detailPane.classList.remove("visible");
+    refreshLifecycleSnapshot();
     return;
   }
 
@@ -71,7 +85,14 @@ export function renderLogs(): void {
   }
 
   for (const log of sortedLogs) {
-    const div = createLogItem(log, state.selectedLogId);
+    const lifecycle = deriveLogLifecycle(log);
+    const previousLifecycle = previousLifecycleById.get(log.id);
+
+    const div = createLogItem(log, state.selectedLogId, {
+      lifecycle,
+      isNew: previousLifecycle == null,
+      didLifecycleChange: previousLifecycle != null && previousLifecycle !== lifecycle.stage
+    });
     div.onclick = () => {
       if (state.selectedLogId === log.id) {
         closeDetailPane();
@@ -101,4 +122,6 @@ export function renderLogs(): void {
   if (state.selectedLogId && detailPane) {
     detailPane.classList.add("visible");
   }
+
+  refreshLifecycleSnapshot();
 }
