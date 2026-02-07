@@ -16,13 +16,32 @@ type StreamSession = {
   started: number;
   requestId: string;
   logEntry: LogEntry;
+  portAlive: boolean;
 };
 
 const sessions = new Map<string, StreamSession>();
 
+function safeSend(session: StreamSession, msg: StreamPortMessage): void {
+  if (!session.portAlive) return;
+  try {
+    session.port.postMessage(msg);
+  } catch {
+    session.portAlive = false;
+  }
+}
+
 export function registerStreamHandlers(broadcast: (evt: BgEvent) => void): void {
   chrome.runtime.onConnect.addListener((port) => {
     if (port.name !== STREAM_PORT_NAME) return;
+
+    port.onDisconnect.addListener(() => {
+      for (const [id, session] of sessions) {
+        if (session.port !== port) continue;
+        session.portAlive = false;
+        session.controller.abort(new DOMException("Port disconnected", "AbortError"));
+        sessions.delete(id);
+      }
+    });
 
     port.onMessage.addListener((msg: StreamPortMessage) => {
       if (msg.type === STREAM_MSG.START) {
@@ -65,7 +84,7 @@ async function handleStreamStart(payload: StreamStartPayload, port: chrome.runti
 
   const { url, fetchInit, logEntry } = ctxResult.ctx;
   const controller = new AbortController();
-  const session: StreamSession = { port, controller, started, requestId: payload.requestId, logEntry };
+  const session: StreamSession = { port, controller, started, requestId: payload.requestId, logEntry, portAlive: true };
   sessions.set(payload.requestId, session);
 
   // Immediately add pending log entry so sidepanel shows request right away
@@ -79,12 +98,12 @@ async function handleStreamStart(payload: StreamStartPayload, port: chrome.runti
   const resetInactivity = (timeoutMs: number) => {
     if (inactivityTimeout) clearTimeout(inactivityTimeout);
     inactivityTimeout = setTimeout(() => {
-      controller.abort();
+      controller.abort(new DOMException(`Stream inactivity timeout (${timeoutMs}ms)`, "AbortError"));
     }, timeoutMs) as unknown as number;
   };
 
   headerTimeout = setTimeout(() => {
-    controller.abort();
+    controller.abort(new DOMException(`Stream header timeout (${STREAM_HEADER_TIMEOUT_MS}ms)`, "AbortError"));
   }, STREAM_HEADER_TIMEOUT_MS) as unknown as number;
 
   try {
@@ -94,7 +113,7 @@ async function handleStreamStart(payload: StreamStartPayload, port: chrome.runti
     const headersObj: Record<string, string> = {};
     res.headers.forEach((value, key) => { headersObj[key] = value; });
 
-    port.postMessage({
+    safeSend(session, {
       type: STREAM_MSG.HEADERS,
       payload: {
         requestId: payload.requestId,
@@ -119,8 +138,7 @@ async function handleStreamStart(payload: StreamStartPayload, port: chrome.runti
     if (!res.body) {
       const fallbackText = await res.text();
       const encoder = new TextEncoder();
-      // Convert to Array for reliable serialization
-      port.postMessage({ type: STREAM_MSG.CHUNK, payload: { requestId: payload.requestId, chunk: Array.from(encoder.encode(fallbackText)) } });
+      safeSend(session, { type: STREAM_MSG.CHUNK, payload: { requestId: payload.requestId, chunk: Array.from(encoder.encode(fallbackText)) } });
     } else {
       const reader = res.body.getReader();
       const inactivityMs = typeof payload.init?.franzai?.timeout === "number" && payload.init.franzai.timeout > 0
@@ -128,13 +146,12 @@ async function handleStreamStart(payload: StreamStartPayload, port: chrome.runti
         : STREAM_INACTIVITY_TIMEOUT_MS;
       resetInactivity(inactivityMs);
 
-      while (true) {
+      while (session.portAlive) {
         const { done, value } = await reader.read();
         if (done) break;
         if (!value) continue;
 
-        // Convert Uint8Array to regular Array for reliable serialization through postMessage
-        port.postMessage({ type: STREAM_MSG.CHUNK, payload: { requestId: payload.requestId, chunk: Array.from(value) } });
+        safeSend(session, { type: STREAM_MSG.CHUNK, payload: { requestId: payload.requestId, chunk: Array.from(value) } });
         resetInactivity(inactivityMs);
 
         if (isText) {
@@ -148,7 +165,7 @@ async function handleStreamStart(payload: StreamStartPayload, port: chrome.runti
       }
     }
 
-    port.postMessage({ type: STREAM_MSG.END, payload: { requestId: payload.requestId } });
+    safeSend(session, { type: STREAM_MSG.END, payload: { requestId: payload.requestId } });
 
     logEntry.status = res.status;
     logEntry.statusText = res.statusText;
@@ -170,7 +187,7 @@ async function handleStreamStart(payload: StreamStartPayload, port: chrome.runti
     await updateLog(logEntry.id, logEntry);
     broadcast({ type: BG_EVT.LOGS_UPDATED });
 
-    port.postMessage({ type: STREAM_MSG.ERROR, payload: { requestId: payload.requestId, message } });
+    safeSend(session, { type: STREAM_MSG.ERROR, payload: { requestId: payload.requestId, message } });
   } finally {
     if (headerTimeout) clearTimeout(headerTimeout);
     if (inactivityTimeout) clearTimeout(inactivityTimeout);
@@ -181,6 +198,6 @@ async function handleStreamStart(payload: StreamStartPayload, port: chrome.runti
 function handleStreamAbort(requestId: string): void {
   const session = sessions.get(requestId);
   if (!session) return;
-  session.controller.abort();
+  session.controller.abort(new DOMException("Stream aborted by client", "AbortError"));
   sessions.delete(requestId);
 }

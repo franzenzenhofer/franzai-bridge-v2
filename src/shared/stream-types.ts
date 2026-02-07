@@ -29,7 +29,7 @@ export type StreamHeadersPayload = {
 
 export type StreamChunkPayload = {
   requestId: string;
-  chunk: Uint8Array;
+  chunk: Uint8Array | number[];
 };
 
 export type StreamEndPayload = {
