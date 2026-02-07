@@ -18,6 +18,7 @@
   --row-hover: #f1f3f4;
   --row-selected: #e8f0fe;
   --font-mono: "Roboto Mono", "SF Mono", "Monaco", "Consolas", monospace;
+  --requests-grid: minmax(36px, 0.8fr) minmax(42px, 0.9fr) minmax(56px, 1.2fr) minmax(0, 6fr) minmax(48px, 1fr) minmax(38px, 0.8fr);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -342,7 +343,7 @@ html, body {
 /* Network table header - compact for sidebar */
 .table-header {
   display: grid;
-  grid-template-columns: 50px 45px 90px 1fr 56px 52px;
+  grid-template-columns: var(--requests-grid);
   background: var(--panel);
   border-bottom: 1px solid var(--border);
   font-size: 10px;
@@ -820,7 +821,7 @@ textarea.error {
 
 .item {
   display: grid;
-  grid-template-columns: 50px 45px 90px 1fr 56px 52px;
+  grid-template-columns: var(--requests-grid);
   border-bottom: 1px solid var(--border);
   border-left: 2px solid transparent;
   cursor: pointer;
@@ -1240,26 +1241,7 @@ button:active {
   background: #a8a8a8;
 }
 
-/* Responsive - even more compact for narrow sidebars */
-@media (max-width: 400px) {
-  .item {
-    grid-template-columns: 45px 40px 1fr 56px;
-  }
-
-  .item .host,
-  .item .elapsed {
-    display: none;
-  }
-
-  .table-header {
-    grid-template-columns: 45px 40px 1fr 56px;
-  }
-
-  .table-header > div:nth-child(3),
-  .table-header > div:nth-child(6) {
-    display: none;
-  }
-}
+/* Keep request columns fluid and visible at every width (no breakpoint-based hiding). */
 
 /* Clear filters button */
 .clear-filters-btn {
