@@ -244,7 +244,7 @@ function renderMessage(msg: ChatMessage, shouldAnimate: boolean): HTMLElement {
 
     const codePreview = el("pre", "code-preview");
     codePreview.style.display = "none";
-    codePreview.textContent = msg.code.slice(0, 500) + (msg.code.length > 500 ? "\n..." : "");
+    codePreview.textContent = msg.code;
 
     codeToggle.onclick = () => {
       expanded = !expanded;
