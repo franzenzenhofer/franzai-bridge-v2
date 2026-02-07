@@ -74,7 +74,7 @@ That's it. No backend needed.
 
 ---
 
-## Supported AI Providers (Verified January 2026)
+## Supported AI Providers (Verified February 2026)
 
 | Provider | Models | ENV Variable |
 |----------|--------|--------------|
@@ -260,7 +260,7 @@ const status = await window.franzai.getStatus();
 console.log(status);
 // {
 //   installed: true,
-//   version: "2.0.53",
+//   version: "2.x.x",
 //   domainEnabled: true,
 //   domainSource: "meta",  // or "user" or "default"
 //   originAllowed: true,
@@ -397,7 +397,7 @@ npm run build
 ```bash
 npm run dev        # Watch mode
 npm run typecheck  # Type check
-npm test           # Run tests (238 tests)
+npm test           # Run unit tests
 npm run build      # Production build
 ```
 

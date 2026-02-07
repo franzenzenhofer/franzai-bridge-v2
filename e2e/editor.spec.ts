@@ -18,7 +18,8 @@ function contentTypeFor(filePath: string): string {
 function startServer(port: number): Promise<Server> {
   return new Promise((resolve) => {
     const server = createServer((req, res) => {
-      let filePath = req.url?.replace(/^\//, "") || "index.html";
+      const rawPath = req.url?.split("?")[0]?.split("#")[0] ?? "/";
+      let filePath = rawPath.replace(/^\//, "") || "index.html";
       if (filePath === "" || filePath === "/") filePath = "index.html";
 
       const fullPath = path.join(editorRoot, filePath);
@@ -75,9 +76,10 @@ test.describe("Editor with Extension", () => {
       };
 
       (window as any).franzai.fetch = async () => {
-        return new Response(JSON.stringify(mockResponse), {
+        const ssePayload = `data: ${JSON.stringify(mockResponse)}\n\n`;
+        return new Response(ssePayload, {
           status: 200,
-          headers: { "Content-Type": "application/json" }
+          headers: { "Content-Type": "text/event-stream" }
         });
       };
     });
@@ -109,9 +111,10 @@ test.describe("Editor with Extension", () => {
             }) }] } }
           ]
         };
-        return new Response(JSON.stringify(mockResponse), {
+        const ssePayload = `data: ${JSON.stringify(mockResponse)}\n\n`;
+        return new Response(ssePayload, {
           status: 200,
-          headers: { "Content-Type": "application/json" }
+          headers: { "Content-Type": "text/event-stream" }
         });
       };
     });

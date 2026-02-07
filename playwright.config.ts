@@ -4,8 +4,10 @@ import dotenv from "dotenv";
 
 // Load environment variables from .env
 dotenv.config();
-const headlessRequested = process.env.PW_EXT_HEADLESS === "1";
-const useSystemChrome = process.env.PW_USE_SYSTEM_CHROME !== "0";
+// Default to headless to avoid stealing focus during local work.
+// Set PW_EXT_HEADLESS=0 to force headed mode.
+const headlessRequested = process.env.PW_EXT_HEADLESS !== "0";
+const useSystemChrome = process.env.PW_USE_SYSTEM_CHROME === "1";
 
 /**
  * Playwright configuration for e2e testing Chrome extension
@@ -28,7 +30,7 @@ export default defineConfig({
     {
       name: "chromium-extension",
       use: {
-        headless: false,
+        headless: headlessRequested,
         ...devices["Desktop Chrome"],
         // Launch Chrome with extension loaded
         launchOptions: {

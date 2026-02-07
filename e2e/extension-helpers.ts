@@ -6,7 +6,20 @@ import { prepareProfileDir, cleanupProfileDir, describeProfileChoice } from "../
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dist = path.resolve(__dirname, "../dist");
-const useSystemChrome = process.env.PW_USE_SYSTEM_CHROME !== "0";
+const useSystemChrome = process.env.PW_USE_SYSTEM_CHROME === "1";
+const distManifest = (() => {
+  const manifestPath = path.join(dist, "manifest.json");
+  if (!fs.existsSync(manifestPath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
+      key?: string;
+      name?: string;
+      version?: string;
+    };
+  } catch {
+    return null;
+  }
+})();
 
 export type ExtensionContext = {
   context: BrowserContext;
@@ -35,11 +48,13 @@ export const withExtension = async (): Promise<ExtensionContext> => {
   }
   const profile = prepareProfileDir();
   console.info(`[e2e] Using ${describeProfileChoice(profile)}`);
-  const headlessRequested = process.env.PW_EXT_HEADLESS === "1";
+  // Default to headless to avoid stealing focus during local work.
+  // Set PW_EXT_HEADLESS=0 to force headed mode.
+  const headlessRequested = process.env.PW_EXT_HEADLESS !== "0";
   const context = await chromium.launchPersistentContext(profile.userDataDir, {
     ...(useSystemChrome ? { channel: "chrome" } : {}),
     args: buildArgs(headlessRequested),
-    // Extensions require full Chrome; keep headed and use --headless=new when requested.
+    // Extensions require full Chrome; when headless is requested we rely on --headless=new.
     headless: false
   });
   const cleanup = () => cleanupProfileDir(profile);
@@ -67,6 +82,8 @@ export const findExtensionId = async (ctx: BrowserContext, profileDir?: string):
   if (!ti) {
     const byPrefs = profileDir ? readExtensionIdFromPreferences(profileDir) : null;
     if (byPrefs) return byPrefs;
+    const byInstallDir = profileDir ? readExtensionIdFromInstalledExtensions(profileDir) : null;
+    if (byInstallDir) return byInstallDir;
     throw new Error("Extension target not found");
   }
   const m = ti.url.match(/^chrome-extension:\/\/([a-z]+)\//);
@@ -82,14 +99,52 @@ const readExtensionIdFromPreferences = (profileDir: string): string | null => {
       extensions?: { settings?: Record<string, { path?: string }> };
     };
     const settings = raw.extensions?.settings || {};
+    const expectedPath = normalizePath(dist);
     for (const [id, info] of Object.entries(settings)) {
       if (!info?.path) continue;
-      if (path.resolve(info.path) === dist) return id;
+      if (normalizePath(info.path) === expectedPath) return id;
     }
   } catch (err) {
     console.warn("[e2e] Failed to read Preferences for extension id", err);
   }
   return null;
+};
+
+const readExtensionIdFromInstalledExtensions = (profileDir: string): string | null => {
+  const extensionsDir = path.join(profileDir, "Default", "Extensions");
+  if (!fs.existsSync(extensionsDir)) return null;
+
+  try {
+    const candidates = fs.readdirSync(extensionsDir, { withFileTypes: true }).filter((d) => d.isDirectory());
+    for (const candidate of candidates) {
+      const versionRoot = path.join(extensionsDir, candidate.name);
+      const versions = fs.readdirSync(versionRoot, { withFileTypes: true }).filter((d) => d.isDirectory());
+      for (const versionDir of versions) {
+        const manifestPath = path.join(versionRoot, versionDir.name, "manifest.json");
+        if (!fs.existsSync(manifestPath)) continue;
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as {
+          key?: string;
+          name?: string;
+          version?: string;
+        };
+
+        if (distManifest?.key && manifest.key === distManifest.key) return candidate.name;
+        if (distManifest?.name && manifest.name === distManifest.name) return candidate.name;
+      }
+    }
+  } catch (err) {
+    console.warn("[e2e] Failed to scan installed extensions for id", err);
+  }
+
+  return null;
+};
+
+const normalizePath = (input: string): string => {
+  try {
+    return fs.realpathSync(input).replace(/[\\/]+$/, "");
+  } catch {
+    return path.resolve(input).replace(/[\\/]+$/, "");
+  }
 };
 
 export async function waitForFranzai(page: Page, timeout = 3000): Promise<boolean> {

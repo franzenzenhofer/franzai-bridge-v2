@@ -309,10 +309,10 @@
       const providerSelect = document.createElement('select');
       providerSelect.id = 'provider';
       [
-        ['openai', 'OpenAI (GPT-5.1 Codex Mini)'],
+        ['openai', 'OpenAI (GPT-5 Mini)'],
         ['anthropic', 'Anthropic (Claude Haiku 4.5)'],
-        ['gemini', 'Google Gemini (2.5 Flash Lite)'],
-        ['mistral', 'Mistral (Small 3.1 24B)'],
+        ['gemini', 'Google Gemini (2.5 Flash)'],
+        ['mistral', 'Mistral (Small Latest)'],
         ['---', '-- CORS Bypass Tests --'],
         ['hackernews', 'Hacker News API'],
         ['github', 'GitHub API'],
@@ -403,11 +403,11 @@
 
     function getProviderConfig(provider) {
       const configs = {
-        // AI Providers (2025 models)
-        openai: { url: 'https://api.openai.com/v1/chat/completions', body: (p) => ({ model: 'gpt-5.1-codex-mini', messages: [{ role: 'user', content: p }] }) },
-        anthropic: { url: 'https://api.anthropic.com/v1/messages', headers: { 'anthropic-version': '2023-06-01' }, body: (p) => ({ model: 'claude-haiku-4.5-20251015', max_tokens: 1024, messages: [{ role: 'user', content: p }] }) },
-        gemini: { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent', body: (p) => ({ contents: [{ parts: [{ text: p }] }] }) },
-        mistral: { url: 'https://api.mistral.ai/v1/chat/completions', body: (p) => ({ model: 'mistral-small-3.1-24b-instruct', messages: [{ role: 'user', content: p }] }) },
+        // AI Providers (core defaults)
+        openai: { url: 'https://api.openai.com/v1/chat/completions', body: (p) => ({ model: 'gpt-5-mini', messages: [{ role: 'user', content: p }] }) },
+        anthropic: { url: 'https://api.anthropic.com/v1/messages', headers: { 'anthropic-version': '2023-06-01' }, body: (p) => ({ model: 'claude-haiku-4-5', max_tokens: 1024, messages: [{ role: 'user', content: p }] }) },
+        gemini: { url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', body: (p) => ({ contents: [{ parts: [{ text: p }] }] }) },
+        mistral: { url: 'https://api.mistral.ai/v1/chat/completions', body: (p) => ({ model: 'mistral-small-latest', messages: [{ role: 'user', content: p }] }) },
         // CORS Bypass Tests (no API key needed)
         hackernews: { method: 'GET', url: 'https://hacker-news.firebaseio.com/v0/topstories.json?print=pretty', noBody: true },
         github: { method: 'GET', url: 'https://api.github.com/repos/anthropics/claude-code/commits?per_page=5', noBody: true },

@@ -199,7 +199,7 @@ console.<span class="function">log</span>(data.choices[0].message.content);</cod
       <strong>That's it!</strong> The extension automatically injects your API key. No backend server needed.
     </div>
 
-    <h2>Available Models (Verified January 2026)</h2>
+    <h2>Available Models (Verified February 2026)</h2>
 
     <h3>OpenAI Models</h3>
     <table>
@@ -304,7 +304,7 @@ console.<span class="function">log</span>(data.choices[0].message.content);</cod
     <p>Check if the extension is installed and ready.</p>
 <pre><code><span class="keyword">const</span> { ok, version } = <span class="keyword">await</span> window.franzai.<span class="function">ping</span>();
 <span class="comment">// ok: true if extension is ready</span>
-<span class="comment">// version: string like "2.0.53"</span></code></pre>
+<span class="comment">// version: string like "2.x.x"</span></code></pre>
 
     <h3>window.franzai.fetch(url, options)</h3>
     <p>Explicit bridge call. Same as regular fetch() but only routes through the extension when the domain is enabled (still ignores per-request <code>franzai.mode</code> overrides).</p>
@@ -329,7 +329,7 @@ console.<span class="function">log</span>(data.choices[0].message.content);</cod
 
     <h3>window.franzai.version</h3>
     <p>Current bridge version string (same as <code>ping()</code>).</p>
-<pre><code><span class="keyword">const</span> version = window.franzai.version; <span class="comment">// "2.0.53"</span></code></pre>
+<pre><code><span class="keyword">const</span> version = window.franzai.version; <span class="comment">// "2.x.x"</span></code></pre>
 
     <h3>window.franzai.isKeySet(keyName)</h3>
     <p>Check if a key is configured in the extension (does not expose the key).</p>
@@ -638,7 +638,7 @@ console.log(data.choices[0].message.content);
 
 **That's it!** The extension automatically injects your API key. No backend server needed.
 
-## Available Models (Verified January 2026)
+## Available Models (Verified February 2026)
 
 ### OpenAI Models
 | Model | Description |
@@ -755,7 +755,7 @@ Check if the extension is installed and ready.
 ```javascript
 const { ok, version } = await window.franzai.ping();
 // ok: true if extension is ready
-// version: string like "2.0.53"
+// version: string like "2.x.x"
 ```
 
 ### window.franzai.fetch(url, options)
@@ -796,7 +796,7 @@ const mode = window.franzai.getMode(); // 'auto' | 'always' | 'off'
 Current bridge version string (same as `ping()`).
 
 ```javascript
-const version = window.franzai.version; // "2.0.53"
+const version = window.franzai.version; // "2.x.x"
 ```
 
 ### window.franzai.isKeySet(keyName)

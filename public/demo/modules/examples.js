@@ -12,7 +12,7 @@ export const EXAMPLES = {
       url: 'https://api.openai.com/v1/chat/completions',
       headers: { 'Content-Type': 'application/json' },
       body: {
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-mini',
         messages: [{ role: 'user', content: 'Say hello in one sentence.' }]
       },
       injectedHeader: 'Authorization',
@@ -26,7 +26,7 @@ export const EXAMPLES = {
       url: 'https://api.anthropic.com/v1/messages',
       headers: { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' },
       body: {
-        model: 'claude-haiku-4-20250414',
+        model: 'claude-haiku-4-5',
         max_tokens: 256,
         messages: [{ role: 'user', content: 'Say hello in one sentence.' }]
       },
@@ -38,7 +38,7 @@ export const EXAMPLES = {
       name: 'Gemini',
       keyName: 'google',
       method: 'POST',
-      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+      url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
       headers: { 'Content-Type': 'application/json' },
       body: { contents: [{ parts: [{ text: 'Say hello in one sentence.' }] }] },
       injectedHeader: 'x-goog-api-key',
@@ -100,7 +100,7 @@ export const EXAMPLES = {
       id: 'google-sites',
       name: 'List Sites',
       method: 'GET',
-      url: 'https://www.googleapis.com/webmasters/v3/sites',
+      url: 'https://searchconsole.googleapis.com/webmasters/v3/sites',
       scope: 'webmasters.readonly',
       description: 'Search Console sites'
     },
@@ -108,7 +108,7 @@ export const EXAMPLES = {
       id: 'google-analytics',
       name: 'Get Search Analytics',
       method: 'POST',
-      url: 'https://www.googleapis.com/webmasters/v3/sites/{siteUrl}/searchAnalytics/query',
+      url: 'https://searchconsole.googleapis.com/webmasters/v3/sites/{siteUrl}/searchAnalytics/query',
       scope: 'webmasters.readonly',
       headers: { 'Content-Type': 'application/json' },
       body: {

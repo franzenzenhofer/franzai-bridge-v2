@@ -53,7 +53,8 @@ export async function handleFetch(
       await appendLog(logEntry, settings.maxLogs);
       broadcast({ type: BG_EVT.LOGS_UPDATED });
 
-      return { ok: true, response: cached };
+      // Ensure caller receives its own requestId even when served from cache.
+      return { ok: true, response: { ...cached, requestId: payload.requestId } };
     }
   }
 

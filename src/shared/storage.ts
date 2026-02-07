@@ -94,7 +94,17 @@ export async function updateLog(logId: string, updates: Partial<LogEntry>): Prom
   const logs = await getLogs();
   const index = logs.findIndex((log) => log.id === logId);
   if (index !== -1) {
-    logs[index] = { ...logs[index], ...updates };
+    const existing = logs[index];
+    if (!existing) return;
+
+    const next: LogEntry = { ...existing };
+    for (const [key, value] of Object.entries(updates) as [keyof LogEntry, LogEntry[keyof LogEntry]][]) {
+      if (value !== undefined) {
+        (next as Record<keyof LogEntry, unknown>)[key] = value;
+      }
+    }
+
+    logs[index] = next;
     await setLogs(logs);
   }
 }
