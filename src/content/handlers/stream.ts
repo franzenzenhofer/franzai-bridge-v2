@@ -4,7 +4,7 @@ import { STREAM_MSG, type StreamPortMessage, type StreamStartPayload } from "../
 import { BRIDGE_SOURCE, STREAM_PORT_NAME } from "../../shared/constants";
 import { createLogger } from "../../shared/logger";
 import { fetchDomainStatus, getDomainStatusCache, isBridgeEnabled } from "../domain-status";
-import { resolveCurrentDomain } from "../domain";
+import { resolveCurrentDomain, resolveCurrentOrigin } from "../domain";
 
 const log = createLogger("content-stream");
 const BRIDGE_DISABLED_MESSAGE =
@@ -51,12 +51,12 @@ export async function handleStreamRequest(req: PageFetchRequest): Promise<void> 
         requestId: req.requestId,
         url: req.url,
         init: req.init,
-        pageOrigin: window.location.origin
+        pageOrigin: resolveCurrentOrigin() || window.location.origin
       }
     : {
         requestId: req.requestId,
         url: req.url,
-        pageOrigin: window.location.origin
+        pageOrigin: resolveCurrentOrigin() || window.location.origin
       };
 
   port.onMessage.addListener((msg: StreamPortMessage) => {

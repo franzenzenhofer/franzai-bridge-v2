@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveDomain } from "../src/content/domain";
+import { resolveDomain, resolveOrigin } from "../src/content/domain";
 
 describe("content domain resolution", () => {
   it("prefers direct hostname when available", () => {
@@ -48,5 +48,23 @@ describe("content domain resolution", () => {
       referrer: "also-not-a-url"
     });
     expect(domain).toBe("");
+  });
+
+  it("resolves opaque frame origin via top/referrer fallback", () => {
+    const origin = resolveOrigin({
+      origin: "null",
+      topOrigin: "",
+      ancestorOrigin: "https://bridge.franzai.com",
+      referrer: "https://fallback.example.com/page"
+    });
+    expect(origin).toBe("https://bridge.franzai.com");
+  });
+
+  it("prefers direct non-opaque origin", () => {
+    const origin = resolveOrigin({
+      origin: "https://bridge.franzai.com",
+      topOrigin: "https://other.example.com"
+    });
+    expect(origin).toBe("https://bridge.franzai.com");
   });
 });

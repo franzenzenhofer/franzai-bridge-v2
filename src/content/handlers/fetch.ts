@@ -4,7 +4,7 @@ import { BRIDGE_SOURCE, BRIDGE_TIMEOUT_MS } from "../../shared/constants";
 import { createLogger } from "../../shared/logger";
 import { sendRuntimeMessage } from "../../shared/runtime";
 import { fetchDomainStatus, getDomainStatusCache, isBridgeEnabled } from "../domain-status";
-import { resolveCurrentDomain } from "../domain";
+import { resolveCurrentDomain, resolveCurrentOrigin } from "../domain";
 
 const log = createLogger("content-fetch");
 const BRIDGE_DISABLED_MESSAGE =
@@ -64,7 +64,7 @@ export async function handleFetchRequest(req: PageFetchRequest): Promise<void> {
 
   const payload: FetchRequestFromPage = {
     ...req,
-    pageOrigin: window.location.origin
+    pageOrigin: resolveCurrentOrigin() || window.location.origin
   };
 
   try {
