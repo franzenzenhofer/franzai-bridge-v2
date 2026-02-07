@@ -172,6 +172,72 @@
       50% { opacity: 0.5; }
     }
 
+    /* Latest Release (Above the Fold) */
+    .release-bar {
+      margin-top: 16px;
+      display: inline-flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      max-width: 760px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .release-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .release-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .release-version {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(26, 115, 232, 0.12);
+      color: var(--accent);
+      font-size: 13px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    .release-meta {
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .release-links {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .release-link {
+      font-size: 13px;
+      text-decoration: none;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .release-link:hover {
+      text-decoration: underline;
+    }
+
     /* Section */
     section {
       padding: 64px 24px;
@@ -920,6 +986,17 @@
       <span class="status-dot checking" id="statusDot"></span>
       <span id="statusText">Checking for extension...</span>
     </div>
+    <div class="release-bar" id="releaseBar" aria-live="polite">
+      <div class="release-header">
+        <span class="release-label">Latest Release</span>
+        <span class="release-version" id="releaseVersion">Loading...</span>
+      </div>
+      <div class="release-meta" id="releaseMeta">Fetching release metadata...</div>
+      <div class="release-links">
+        <a class="release-link" id="releaseDownloadLink" href="/downloads/franzai-bridge-latest.zip" download>Download latest ZIP</a>
+        <a class="release-link" href="https://github.com/franzenzenhofer/franzai-bridge-v2/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">View changelog</a>
+      </div>
+    </div>
   </section>
 
   <!-- Features -->
@@ -1336,22 +1413,43 @@ console.<span class="function">log</span>(<span class="string">"Your sites:"</sp
 
     async function loadVersionInfo() {
       const versionEl = document.getElementById('downloadVersion');
+      const releaseVersionEl = document.getElementById('releaseVersion');
+      const releaseMetaEl = document.getElementById('releaseMeta');
+      const releaseDownloadLinkEl = document.getElementById('releaseDownloadLink');
       try {
         const res = await fetch('/downloads/version.json');
         if (res.ok) {
           const info = await res.json();
-          const sizeKB = (info.size / 1024).toFixed(0);
+          const sizeBytes = typeof info.size === 'number' ? info.size : 0;
+          const sizeKB = (sizeBytes / 1024).toFixed(0);
           const date = new Date(info.buildDate).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric'
           });
+          const time = new Date(info.buildDate).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          const versionText = 'v' + info.version;
+          const releaseMetaText = versionText + ' built on ' + date + ' at ' + time + ' • ' + sizeKB + ' KB';
+
           versionEl.textContent = 'v' + info.version + ' • ' + sizeKB + ' KB • ' + date;
+          releaseVersionEl.textContent = versionText;
+          releaseMetaEl.textContent = releaseMetaText;
+
+          const latestUrl = info.latestUrl || info.downloadUrl || '/downloads/franzai-bridge-latest.zip';
+          releaseDownloadLinkEl.setAttribute('href', latestUrl);
         } else {
           versionEl.textContent = 'Latest version available';
+          releaseVersionEl.textContent = 'Latest';
+          releaseMetaEl.textContent = 'Release metadata unavailable. Download latest package from the link below.';
         }
       } catch (e) {
         versionEl.textContent = 'Latest version available';
+        releaseVersionEl.textContent = 'Latest';
+        releaseMetaEl.textContent = 'Release metadata unavailable. Download latest package from the link below.';
       }
     }
 
